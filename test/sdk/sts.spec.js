@@ -14,7 +14,6 @@
  * @author zhouhua
  */
 
-var util = require('util');
 var path = require('path');
 var fs = require('fs');
 
@@ -29,39 +28,39 @@ var helper = require('./helper');
 
 describe('STS', function () {
     var fail;
-
-    var bucket;
-    var key;
-
+    var tempAk;
+    var tempSk;
+    var sessionToken;
+    var bucket = 'javascript-sdk-testcase';
+    var key = 'object' + (+new Date());
     var stsClient = new STS(config.sts);
     var bosClient = new BosClient(config.bos);
     var defaultText = 'hello world';
 
     function clearBucket(bucketName) {
-        return bosClient.listObjects(bucketName)
-            .then(function (response) {
-                var defers = [];
-                u.each(response.body.contents, function (object) {
-                    defers.push(bosClient.deleteObject(bucketName, object.key))
+        var promise =
+            bosClient.listObjects(bucketName)
+                .then(function (response) {
+                    var defers = [];
+                    u.each(response.body.contents, function (object) {
+                        defers.push(bosClient.deleteObject(bucketName, object.key))
+                    });
+                    return Q.all(defers);
                 });
-                return Q.all(defers);
-            });
+        return promise;
     }
 
     beforeEach(function (done) {
-        jasmine.getEnv().defaultTimeoutInterval = 60 * 1000;
-
         fail = helper.fail(this);
-
-        var id = Math.floor(Math.random() * 100000) + 900;
-        bucket = util.format('test-bucket%d', id);
-        key = util.format('test_object %d', id);
-
-        bosClient.createBucket(bucket)
+        bosClient.doesBucketExist(bucket)
+            .then(function () {
+                return clearBucket(bucket);
+            }, function () {
+                return bosClient.createBucket(bucket);
+            })
             .then(function () {
                 return bosClient.putObjectFromString(bucket, key, defaultText);
             })
-            .catch(fail)
             .fin(done);
     });
 
@@ -73,26 +72,27 @@ describe('STS', function () {
         stsClient.getSessionToken(6000, {
                 accessControlList: [{
                     service: 'bce:bos',
-                    resource: [bucket + '/*'],
+                    resource: [bucket+'/*'],
                     region: '*',
                     effect: 'Allow',
                     permission: ['READ']
                 }]
             })
             .then(function (response) {
-                var tempAk = response.body.accessKeyId;
-                var tempSk = response.body.secretAccessKey;
-                var sessionToken = response.body.sessionToken;
-                debug(response.body);
-                var client = new BosClient({
-                    endpoint: config.bos.endpoint,
+                tempAk = response.body.accessKeyId;
+                tempSk = response.body.secretAccessKey;
+                sessionToken = response.body.sessionToken;
+                console.log(tempAk);
+                console.log(tempSk);
+                console.log(sessionToken);
+                var tempBosClient = new BosClient(u.extend({}, config.bos, {
                     credentials: {
                         ak: tempAk,
                         sk: tempSk
                     },
                     sessionToken: sessionToken
-                });
-                return client.getObjectMetadata(bucket, key);
+                }));
+                return tempBosClient.getObjectMetadata(bucket, key);
             })
             .then(function (response) {
                 expect(+response.http_headers['content-length']).toEqual(defaultText.length);
@@ -103,35 +103,32 @@ describe('STS', function () {
             .catch(fail)
             .fin(done);
     });
-
     it('Write To BOS', function (done) {
         var newText = 'Happy New Year';
-        var client;
         stsClient.getSessionToken(6000, {
                 accessControlList: [{
                     service: 'bce:bos',
-                    resource: [bucket + '/*'],
+                    resource: [bucket+'/*'],
                     region: '*',
                     effect: 'Allow',
                     permission: ['READ', 'WRITE']
                 }]
             })
             .then(function (response) {
-                var tempAk = response.body.accessKeyId;
-                var tempSk = response.body.secretAccessKey;
-                var sessionToken = response.body.sessionToken;
-                client = new BosClient({
-                    endpoint: config.bos.endpoint,
+                tempAk = response.body.accessKeyId;
+                tempSk = response.body.secretAccessKey;
+                sessionToken = response.body.sessionToken;
+                var tempBosClient = new BosClient(u.extend({}, config.bos, {
                     credentials: {
                         ak: tempAk,
                         sk: tempSk
                     },
                     sessionToken: sessionToken
-                });
-                return client.putObjectFromString(bucket, key, newText);
-            })
-            .then(function () {
-                return client.getObjectMetadata(bucket, key);
+                }));
+                return tempBosClient.putObjectFromString(bucket, key, newText)
+                    .then(function () {
+                        return tempBosClient.getObjectMetadata(bucket, key);
+                    });
             })
             .then(function (response) {
                 expect(+response.http_headers['content-length']).toEqual(newText.length);
@@ -142,6 +139,7 @@ describe('STS', function () {
             .catch(fail)
             .fin(done);
     });
+
 });
 
 /* vim: set ts=4 sw=4 sts=4 tw=120: */

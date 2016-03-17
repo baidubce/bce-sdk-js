@@ -24,6 +24,22 @@ var debug = require('debug')('vod_client.spec');
 var config = require('../config');
 var VodClient = require('../../').VodClient;
 var helper = require('./helper');
+//var bosConfig = {
+//    credentials: {
+//        ak: '3e50573ecad74f1e8032b1c8a1c43265',
+//        sk: '3c81cdfbf6d34a6d8c5ec520ca77beba'
+//    },
+//    endpoint: 'http://bos.bj.baidubce.com'
+//};
+//var vodConfig = {
+//    credentials: {
+//        ak: '3e50573ecad74f1e8032b1c8a1c43265',
+//        sk: '3c81cdfbf6d34a6d8c5ec520ca77beba'
+//    },
+//    endpoint: 'http://vod.baidubce.com'
+//};
+//config.media = vodConfig;
+//config.media_bos = bosConfig;
 
 var MediaStatus = {
     PUBLISHED: 'PUBLISHED',
@@ -44,44 +60,34 @@ describe('VodClient', function () {
     var title = 'testTitle' + (+new Date());
     var description = 'testDescription' + (+new Date());
 
-    beforeEach(function () {
-        jasmine.getEnv().defaultTimeoutInterval = 5 * 60 * 1000;
-
+    beforeEach(function (done) {
         fail = helper.fail(this);
+        done();
     });
 
-    afterEach(function () {
-        // TODO
+    afterEach(function (done) {
+        done();
     });
 
     it('Create Media Source', function (done) {
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         var filePath = path.join(__dirname, '123.mp3');
         vod.createMediaResource(title, description, filePath)
             .then(function (response) {
-                debug(response);
                 mediaId = response.body.mediaId;
                 expect(mediaId).not.toBeUndefined();
-                return helper.loop(240, 30, function () {
-                    return vod.getMediaResource(mediaId)
-                        .then(function (response) {
-                            debug('loop = %j', response.body);
-                            if (response.body.status === 'RUNNING') {
-                                throw '$continue';
-                            }
-                        });
-                });
             })
             .catch(fail)
-            .fin(done);
-    });
-
+            .fin(function () {
+                // wait two minuets for encoding media
+                setTimeout(done, 120000);
+            });
+    }, 150000);
     it('Get Media Source', function (done) {
         expect(mediaId).not.toBeUndefined();
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         vod.getMediaResource(mediaId)
             .then(function (response) {
-                debug(response);
                 expect(response.body.mediaId).toEqual(mediaId);
                 expect(response.body.attributes.title).toEqual(title);
                 expect(response.body.attributes.description).toEqual(description);
@@ -89,13 +95,11 @@ describe('VodClient', function () {
             .catch(fail)
             .fin(done);
     });
-
     it('Get All Media Sources', function (done) {
         expect(mediaId).not.toBeUndefined();
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         vod.listMediaResource()
             .then(function (response) {
-                debug(response);
                 var uploadMedia = u.filter(response.body.media, function (media) {
                     return media.mediaId === mediaId;
                 });
@@ -106,42 +110,37 @@ describe('VodClient', function () {
             .catch(fail)
             .fin(done);
     });
-
     it('Disable Media Source', function (done) {
         expect(mediaId).not.toBeUndefined();
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         vod.stopMediaResource(mediaId)
             .then(function () {
                 return vod.getMediaResource(mediaId);
             })
             .then(function (response) {
-                debug(response);
                 expect(response.body.mediaId).toEqual(mediaId);
                 expect(response.body.status).toEqual(MediaStatus.DISABLED);
             })
             .catch(fail)
             .fin(done);
     });
-
     it('Publish Media Source', function (done) {
         expect(mediaId).not.toBeUndefined();
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         vod.publishMediaResource(mediaId)
             .then(function () {
                 return vod.getMediaResource(mediaId);
             })
             .then(function (response) {
-                debug(response);
                 expect(response.body.mediaId).toEqual(mediaId);
                 expect(response.body.status).toEqual(MediaStatus.PUBLISHED);
             })
             .catch(fail)
             .fin(done);
     });
-
     it('Update Media Source', function (done) {
         expect(mediaId).not.toBeUndefined();
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         title = 'updateTitle' + (+new Date());
         description = 'updateDescription' + (+new Date());
         vod.updateMediaResource(mediaId, title, description)
@@ -149,7 +148,6 @@ describe('VodClient', function () {
                 return vod.getMediaResource(mediaId);
             })
             .then(function (response) {
-                debug(response);
                 expect(response.body.mediaId).toEqual(mediaId);
                 expect(response.body.attributes.title).toEqual(title);
                 expect(response.body.attributes.description).toEqual(description);
@@ -157,13 +155,11 @@ describe('VodClient', function () {
             .catch(fail)
             .fin(done);
     });
-
     it('Get Player Code', function (done) {
         expect(mediaId).not.toBeUndefined();
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         vod.getPlayerCode(mediaId, 800, 600, true)
             .then(function (response) {
-                debug(response);
                 var codes = u.filter(response.body.codes, function (code) {
                     return u.contains(CodeType, code.codeType);
                 });
@@ -180,29 +176,25 @@ describe('VodClient', function () {
             .catch(fail)
             .fin(done);
     });
-
     it('Get Playable Url', function (done) {
         expect(mediaId).not.toBeUndefined();
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         vod.getPlayableUrl(mediaId)
             .then(function (response) {
-                debug(response);
                 expect(response.body.result.file).toMatch(/^http:\/\//);
                 expect(response.body.result.media_id).toEqual(mediaId);
             })
             .catch(fail)
             .fin(done);
     });
-
     it('Delete Media Source', function (done) {
         expect(mediaId).not.toBeUndefined();
-        var vod = new VodClient(config.vod);
+        var vod = new VodClient(config.media, config.media_bos);
         vod.deleteMediaResource(mediaId)
             .then(function () {
                 return vod.listMediaResource();
             })
             .then(function (response) {
-                debug(response);
                 var uploadMedia = u.filter(response.body.media, function (media) {
                     return media.mediaId === mediaId;
                 });
@@ -211,6 +203,7 @@ describe('VodClient', function () {
             .catch(fail)
             .fin(done);
     });
+
 });
 
 /* vim: set ts=4 sw=4 sts=4 tw=120: */

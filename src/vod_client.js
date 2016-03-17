@@ -24,34 +24,26 @@ var u = require('underscore');
 var BceBaseClient = require('./bce_base_client');
 var BosClient = require('./bos_client');
 var H = require('./headers');
-var helper = require('./helper');
 
 /**
  * VOD音视频点播服务
  *
  * @see https://bce.baidu.com/doc/VOD/API.html#API.E6.8E.A5.E5.8F.A3
  * @constructor
- * @param {Object} config The VodClient configuration.
+ * @param {Object} vodConfig The VodClient configuration.
+ * @param {Object} bosConfig The BosClient configuration.
  * @extends {BceBaseClient}
  */
-function VodClient(config) {
-    // Vod is a global service. It doesn't support region.
-    BceBaseClient.call(this, config, 'vod', false);
-
-    var bosConfig = this.config.bos || {};
-    if (!bosConfig.credentials) {
-        bosConfig.credentials = this.config.credentials;
-    }
-
-    this._bosClient = new BosClient(bosConfig);
-    /*
+function VodClient(vodConfig, bosConfig) {
+    this.bosClient = new BosClient(u.extend({}, vodConfig, bosConfig));
     var client = this;
     u.each(['progress', 'error', 'abort'], function (eventName) {
         client.bosClient.on(eventName, function (evt) {
             client.emit(eventName, evt);
         });
     });
-    */
+    // Vod is a global service. It doesn't support region.
+    BceBaseClient.call(this, vodConfig, 'vod', false);
 }
 util.inherits(VodClient, BceBaseClient);
 
@@ -59,14 +51,12 @@ util.inherits(VodClient, BceBaseClient);
 
 VodClient.prototype.createMediaResource = function (title, description, blob, options) {
     options = options || {};
-
     var mediaId;
     var client = this;
-    var bosClient = this._bosClient;
     return client._generateMediaId(options)
         .then(function (res) {
             mediaId = res.body.mediaId;
-            return helper.upload(bosClient, res.body.sourceBucket, res.body.sourceKey, blob, options);
+            return client._uploadMeida(res.body.sourceBucket, res.body.sourceKey, blob, options);
         })
         .then(function () {
             return client._internalCreateMediaResource(mediaId, title, description, options);
@@ -131,6 +121,10 @@ VodClient.prototype.getPlayerCode = function (mediaId, width, height, autoStart,
 
 VodClient.prototype._generateMediaId = function (options) {
     return this.buildRequest('GET', 'internal', null, options);
+};
+
+VodClient.prototype._uploadMeida = function (bucketName, key, blob, options) {
+    return this.bosClient.uploadFecade(bucketName, key, blob, null, null, options);
 };
 
 VodClient.prototype._internalCreateMediaResource = function (mediaId, title, description, options) {

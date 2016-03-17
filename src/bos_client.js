@@ -24,6 +24,7 @@ var qs = require('querystring');
 
 var u = require('underscore');
 var Q = require('q');
+var async = require('async');
 
 var H = require('./headers');
 var strings = require('./strings');
@@ -34,8 +35,8 @@ var BceBaseClient = require('./bce_base_client');
 var MimeType = require('./mime.types');
 var WMStream = require('./wm_stream');
 
-// var MIN_PART_SIZE = 1048576;                // 1M
-// var THREAD = 2;
+var MIN_PART_SIZE = 1048576;                // 1M
+var THREAD = 2;
 var MAX_PUT_OBJECT_LENGTH = 5368709120;     // 5G
 var MAX_USER_METADATA_SIZE = 2048;          // 2 * 1024
 var MIN_PART_NUMBER = 1;
@@ -723,6 +724,97 @@ BosClient.prototype._prepareObjectHeaders = function (options) {
     }
 
     return headers;
+};
+
+BosClient.prototype.uploadFecade = function (bucketName, key, blob, partSize, threadNum, options) {
+    partSize = partSize || MIN_PART_SIZE;
+    threadNum = threadNum || THREAD;
+    var isBlob = !u.isString(blob);
+    var size = isBlob ? blob.size : fs.statSync(blob).size;
+    if (size <= partSize) {
+        return (isBlob ? this.putObjectFromBlob : this.putObjectFromFile).call(this, bucketName, key, blob, options);
+    }
+    var uploadId;
+    var client = this;
+    return client.initiateMultipartUpload(bucketName, key, options).then(function (res) {
+        uploadId = res.body.uploadId;
+        var deferred = Q.defer();
+        var tasks = client._getTasks(blob, uploadId, bucketName, key, partSize, size);
+        var state = {
+            lengthComputable: true,
+            loaded: 0,
+            total: tasks.length
+        };
+        async.mapLimit(tasks, threadNum, client._uploadPartFile(state, isBlob), function (err, results) {
+            if (err) {
+                deferred.reject(err);
+            }
+            else {
+                deferred.resolve(results);
+            }
+        });
+        return deferred.promise;
+    }).then(function (allResponse) {
+        var partList = u.map(allResponse, function (response, index) {
+            // 生成分块清单
+            return {
+                partNumber: index + 1,
+                eTag: response.http_headers.etag
+            };
+        });
+        return client.completeMultipartUpload(bucketName, key, uploadId, partList); // 完成上传
+    });
+};
+
+BosClient.prototype._uploadPartFile = function (state, isBlob) {
+    var client = this;
+    return function (task, callback) {
+        var promise;
+        if (isBlob) {
+            var blob = task.file.slice(task.start, task.stop + 1);
+            promise = client.uploadPartFromBlob(task.bucketName, task.key, task.uploadId, task.partNumber,
+                task.partSize, blob);
+        }
+        else {
+            promise = client.uploadPartFromFile(task.bucketName, task.key, task.uploadId, task.partNumber,
+                task.partSize, task.file, task.start);
+        }
+        return promise.then(function (res) {
+                ++state.loaded;
+                client.emit('progress', state);
+                callback(null, res);
+            })
+            .catch(function (err) {
+                callback(err);
+            });
+    };
+};
+
+BosClient.prototype._getTasks = function (file, uploadId, bucketName, key, PART_SIZE, size) {
+    var leftSize = size;
+    var offset = 0;
+    var partNumber = 1;
+
+    var tasks = [];
+
+    while (leftSize > 0) {
+        var partSize = Math.min(leftSize, PART_SIZE);
+        tasks.push({
+            file: file,
+            uploadId: uploadId,
+            bucketName: bucketName,
+            key: key,
+            partNumber: partNumber,
+            partSize: partSize,
+            start: offset,
+            stop: offset + partSize - 1
+        });
+
+        leftSize -= partSize;
+        offset += partSize;
+        partNumber += 1;
+    }
+    return tasks;
 };
 
 module.exports = BosClient;

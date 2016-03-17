@@ -23,7 +23,6 @@ var util = require('util');
 var Q = require('q');
 var u = require('underscore');
 var H = require('./headers');
-
 var BosClient = require('./bos_client');
 var HttpClient = require('./http_client');
 var BceBaseClient = require('./bce_base_client');
@@ -80,12 +79,10 @@ DocClient.prototype.createDocumentFromBlob = function (file, options) {
         };
         return deferred.promise;
     };
-
     return deffered(file).then(function (content) {
         options.meta.md5 = require('./crypto').md5sum(content, 0, 'hex');
         return doPromise();
     });
-
     function doPromise() {
         // register
         return self.registerDocument(options).then(function (response) {
@@ -117,7 +114,7 @@ DocClient.prototype.publishDocument = function (documentId) {
     url = url + '/' + documentId;
     return self.sendRequest('PUT', url, {
         params: {publish: ''}
-    });
+    })
 };
 
 // --- E   N   D ---

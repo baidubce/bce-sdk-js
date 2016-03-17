@@ -1,13 +1,13 @@
 {
   "name": "bce-sdk-js",
-  "version": "0.1.0",
+  "version": "0.0.24",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "./test/run-all.sh",
+    "test": "node_modules/.bin/jasmine-node --verbose --growl --captureExceptions test/sdk/bos_client.spec.js && node_modules/.bin/jasmine-node --verbose --growl --captureExceptions test/sdk/vod_client.spec.js",
     "pack": "node_modules/.bin/browserify -s baidubce.sdk index.js -o baidubce-sdk.bundle.js && uglifyjs baidubce-sdk.bundle.js --compress --mangle -o baidubce-sdk.bundle.min.js"
   },
   "repository": {
