@@ -203,8 +203,6 @@ Document.prototype.publish = function (documentId) {
     var url = this._buildUrl(documentId || this._documentId);
     return this.sendRequest('PUT', url, {
         params: {publish: ''}
-    }).then(function () {
-        return documentId;
     });
 };
 
