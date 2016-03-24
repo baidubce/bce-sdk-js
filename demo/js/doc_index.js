@@ -47,9 +47,9 @@ $(document).ready(function () {
                         .text(width.toFixed(2) + '%');
                 }
             });
-            promise.then(function (documentId) {
+            promise.then(function (response) {
                     toastr.success('上传成功');
-                    $row.find('.documentId').html(documentId);
+                    $row.find('.documentId').html(response.body.documentId);
                     $row.find('.file-detail').html('完成');
                 })
                 .catch(function (err) {

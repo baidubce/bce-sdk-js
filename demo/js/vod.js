@@ -4,8 +4,8 @@ $(document).ready(function () {
     var sdk = window.baidubce.sdk;
     var vodConfig = {
         credentials: {
-            ak: '',
-            sk: ''
+            ak: 'f5569b0a5aa5412481e755d8b912c504',
+            sk: '931c7641fa324821a75b50de4c343ced'
         },
         sessionToken: ''
     };
