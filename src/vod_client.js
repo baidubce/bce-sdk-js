@@ -20,6 +20,7 @@
 
 var util = require('util');
 var u = require('underscore');
+var Q = require('q');
 
 var BceBaseClient = require('./bce_base_client');
 var BosClient = require('./bos_client');
@@ -63,10 +64,13 @@ VodClient.prototype.createMediaResource = function (title, description, blob, op
     var mediaId;
     var client = this;
     var bosClient = this._bosClient;
-    return client._generateMediaId(options)
+    return client._generateMediaId(blob, options)
         .then(function (res) {
             mediaId = res.body.mediaId;
-            return helper.upload(bosClient, res.body.sourceBucket, res.body.sourceKey, blob, options);
+            return helper.upload(bosClient, 'vod', mediaId, res.body.sourceBucket, res.body.sourceKey, blob, options);
+        })
+        .then(function () {
+            return helper.afterUpload(blob, 'vod');
         })
         .then(function () {
             return client._internalCreateMediaResource(mediaId, title, description, options);
@@ -129,7 +133,17 @@ VodClient.prototype.getPlayerCode = function (mediaId, width, height, autoStart,
     }));
 };
 
-VodClient.prototype._generateMediaId = function (options) {
+VodClient.prototype._generateMediaId = function (file, options) {
+    var state = helper.beforeUpload(file, 'vod');
+    if (state) {
+        return Q.resolve({
+            body: {
+                mediaId: state.id,
+                sourceBucket: state.bucket,
+                sourceKey: state.object
+            }
+        });
+    }
     return this.buildRequest('GET', 'internal', null, options);
 };
 

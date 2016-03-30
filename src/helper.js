@@ -25,24 +25,29 @@ var debug = require('debug')('bce-sdk:helper');
 var MIN_MULTIPART_SIZE = 5 * 1024 * 1024;   // 5M
 
 // 分片上传的时候，每个分片的大小
-var PART_SIZE          = 1 * 1024 * 1024;   // 1M
+var PART_SIZE = 1 * 1024 * 1024;   // 1M
 
-var DATA_TYPE_FILE     = 1;
-var DATA_TYPE_BUFFER   = 2;
-var DATA_TYPE_STREAM   = 3;
-var DATA_TYPE_BLOB     = 4;
+var DATA_TYPE_FILE = 1;
+var DATA_TYPE_BUFFER = 2;
+var DATA_TYPE_STREAM = 3;
+var DATA_TYPE_BLOB = 4;
 
+var strategies = {};
+var choosenKey = 'default';
+strategies.default = {};
 /**
  * 自适应的按需上传文件
  *
  * @param {BosClient} client The bos client instance.
+ * @param {string} service service name.
+ * @param {string} resourceId resource id of specific service.
  * @param {string} bucket The bucket name.
  * @param {string} object The object name.
  * @param {Blob|Buffer|stream.Readable|string} data The data.
  * @param {Object} options The request options.
  * @return {Promise}
  */
-exports.upload = function (client, bucket, object, data, options) {
+strategies.default.upload = function (client, service, resourceId, bucket, object, data, options) {
     var contentLength = 0;
     var dataType = -1;
     if (typeof data === 'string') {
@@ -89,8 +94,16 @@ exports.upload = function (client, bucket, object, data, options) {
         // 开始分片上传
         debug('%s > %s -> multi-part', contentLength, MIN_MULTIPART_SIZE);
         return uploadViaMultipart(client, data, dataType,
-                                  bucket, object, contentLength, PART_SIZE, options);
+            bucket, object, contentLength, PART_SIZE, options);
     }
+};
+
+strategies.default.beforeUpload = function () {
+    return false;
+};
+
+strategies.default.afterUpload = function () {
+    return false;
 };
 
 /*eslint-disable*/
@@ -209,14 +222,41 @@ function getTasks(data, uploadId, bucket, object, size, partSize) {
     return tasks;
 }
 
+function pickStrategy(key) {
+    var strategy = strategies[key] || strategies.default;
+    if (!strategy) {
+        throw new Error('upload strategy missing.');
+    }
+    return strategy;
+}
 
+exports.upload = function () {
+    var args = [].slice.call(arguments, 0);
+    var strategy = pickStrategy(choosenKey);
+    return strategy.upload.apply(null, args);
+};
 
+exports.beforeUpload = function () {
+    var args = [].slice.call(arguments, 0);
+    var strategy = pickStrategy(choosenKey);
+    return strategy.beforeUpload.apply(null, args);
+};
 
+exports.afterUpload = function () {
+    var args = [].slice.call(arguments, 0);
+    var strategy = pickStrategy(choosenKey);
+    return strategy.afterUpload.apply(null, args);
+};
 
+exports.setStrategy = function (key, strategy, isChoose) {
+    strategies[key] = strategy;
+    if (isChoose) {
+        choosenKey = key
+    }
+};
 
-
-
-
-
+exports.chooseStrategy = function (key) {
+    choosenKey = key;
+};
 
 /* vim: set ts=4 sw=4 sts=4 tw=120: */

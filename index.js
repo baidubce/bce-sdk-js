@@ -31,6 +31,7 @@ exports.MimeType = require('./src/mime.types');
 exports.STS = require('./src/sts');
 exports.VodClient = require('./src/vod_client');
 exports.DocClient = require('./src/doc_client');
+exports.uploadStrategy = require('./src/helper').setStrategy;
 
 
 

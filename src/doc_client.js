@@ -32,9 +32,9 @@ var BceBaseClient = require('./bce_base_client');
 var UploadHelper = require('./helper');
 var crypto = require('./crypto');
 
-var DATA_TYPE_FILE     = 1;
-var DATA_TYPE_BUFFER   = 2;
-var DATA_TYPE_BLOB     = 4;
+var DATA_TYPE_FILE = 1;
+var DATA_TYPE_BUFFER = 2;
+var DATA_TYPE_BLOB = 4;
 
 /**
  * 文档转码任务接口（Job/Transcoding API）
@@ -176,7 +176,7 @@ Document.prototype._doCreate = function (data, options) {
             var bosConfig = u.extend({}, self.config, {endpoint: bosEndpoint});
             var bosClient = new BosClient(bosConfig);
 
-            return UploadHelper.upload(bosClient, bucket, object, data);
+            return UploadHelper.upload(bosClient, 'doc', documentId, bucket, object, data);
         })
         .then(function (response) {
             debug('upload[response = %j]', response);
@@ -268,8 +268,7 @@ Document.prototype.read = function (documentId) {
  * @param {string=} opt_notification The notification name.
  * @return {Promise}
  */
-Document.prototype.createFromBos = function (
-    bucket, object, title, opt_format, opt_notification) {
+Document.prototype.createFromBos = function (bucket, object, title, opt_format, opt_notification) {
     var url = this._buildUrl();
 
     var body = {
