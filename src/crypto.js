@@ -16,59 +16,56 @@
 
 /* eslint-env node */
 
-var fs = require('fs');
-var crypto = require('crypto');
+import fs from 'fs';
+import crypto from 'crypto';
 
-var Q = require('q');
+import Q from 'q';
 
-exports.md5sum = function (data, enc, digest) {
+let md5sum = (data, enc, digest) => {
     if (!Buffer.isBuffer(data)) {
         data = new Buffer(data, enc || 'UTF-8');
     }
 
-    var md5 = crypto.createHash('md5');
+    let md5 = crypto.createHash('md5');
     md5.update(data);
 
     return md5.digest(digest || 'base64');
 };
 
-exports.md5stream = function (stream, digest) {
-    var deferred = Q.defer();
+let md5stream = (stream, digest) => {
+    let deferred = Q.defer();
 
-    var md5 = crypto.createHash('md5');
-    stream.on('data', function (chunk) {
-        md5.update(chunk);
-    });
-    stream.on('end', function () {
-        deferred.resolve(md5.digest(digest || 'base64'));
-    });
-    stream.on('error', function (error) {
-        deferred.reject(error);
-    });
+    let md5 = crypto.createHash('md5');
+    stream.on('data', chunk => md5.update(chunk));
+    stream.on('end', () => deferred.resolve(md5.digest(digest || 'base64')));
+    stream.on('error', error => deferred.reject(error));
 
     return deferred.promise;
 };
 
-exports.md5file = function (filename, digest) {
-    return exports.md5stream(fs.createReadStream(filename), digest);
-};
+let md5file = (filename, digest) => md5stream(fs.createReadStream(filename), digest);
 
-exports.md5blob = function (blob, digest) {
-    var deferred = Q.defer();
+let md5blob = (blob, digest) => {
+    let deferred = Q.defer();
 
-    var reader = new FileReader();
+    let reader = new FileReader();
     reader.readAsArrayBuffer(blob);
-    reader.onerror = function (e) {
-        deferred.reject(reader.error);
-    };
-    reader.onloadend = function (e) {
+    reader.onerror = e => deferred.reject(reader.error);
+    reader.onloadend = e => {
         if (e.target.readyState === FileReader.DONE) {
-            var content = e.target.result;
-            var md5 = exports.md5sum(content, null, digest);
+            let content = e.target.result;
+            let md5 = md5sum(content, null, digest);
             deferred.resolve(md5);
         }
     };
     return deferred.promise;
+};
+
+export default {
+    md5sum,
+    md5stream,
+    md5file,
+    md5blob
 };
 
 

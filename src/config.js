@@ -16,12 +16,15 @@
 
 /* eslint-env node */
 
-exports.DEFAULT_SERVICE_DOMAIN = 'baidubce.com';
-
-exports.DEFAULT_CONFIG = {
-    protocol: 'http',
-    region: 'bj'
+export default {
+    DEFAULT_SERVICE_DOMAIN: 'baidubce.com',
+    DEFAULT_CONFIG: {
+        protocol: 'http',
+        region: 'bj',
+        apiVersion: 'v1'
+    }
 };
+
 
 
 

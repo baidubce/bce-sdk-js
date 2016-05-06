@@ -11,9 +11,9 @@
  * specific language governing permissions and limitations under the License.
  */
 
-var expect = require('expect.js');
+import expect from 'expect.js';
 
-var Multipart = require('../../src/multipart');
+import Multipart from '../../src/multipart';
 
 describe('Multipart', function () {
     it('invalid data type', function () {

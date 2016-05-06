@@ -17,17 +17,22 @@
 /* eslint-env node */
 /* eslint max-params:[0,10] */
 
-var http = require('http');
-var https = require('https');
-var util = require('util');
-var stream = require('stream');
-var EventEmitter = require('events').EventEmitter;
+import http from 'http';
+import https from 'https';
+import util from 'util';
+import url from 'url';
+import querystring from 'querystring';
+import stream from 'stream';
+import {EventEmitter} from 'events';
 
-var u = require('underscore');
-var Q = require('q');
-var debug = require('debug')('bce-sdk:HttpClient');
+import u from 'underscore';
+import Q from 'q';
+import _debug from 'debug';
 
-var H = require('./headers');
+import * as H from './headers';
+import * as helper from './helper';
+
+const debug = _debug('bce-sdk:HttpClient');
 
 /**
  * The HttpClient
@@ -35,372 +40,226 @@ var H = require('./headers');
  * @constructor
  * @param {Object} config The http client configuration.
  */
-function HttpClient(config) {
-    EventEmitter.call(this);
-
-    this.config = config;
-
-    /**
-     * http(s) request object
-     * @type {Object}
-     */
-    this._req = null;
-}
-util.inherits(HttpClient, EventEmitter);
-
-/**
- * Send Http Request
- *
- * @param {string} httpMethod GET,POST,PUT,DELETE,HEAD
- * @param {string} path The http request path.
- * @param {(string|Buffer|stream.Readable)=} body The request body. If `body` is a
- * stream, `Content-Length` must be set explicitly.
- * @param {Object=} headers The http request headers.
- * @param {Object=} params The querystrings in url.
- * @param {function():string=} signFunction The `Authorization` signature function
- * @param {stream.Writable=} outputStream The http response body.
- * @param {number=} retry The maximum number of network connection attempts.
- *
- * @resolve {{http_headers:Object,body:Object}}
- * @reject {Object}
- *
- * @return {Q.defer}
- */
-HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, params,
-                                             signFunction, outputStream) {
-
-    var requestUrl = this._getRequestUrl(path, params);
-    var options = require('url').parse(requestUrl);
-    debug('httpMethod = %s, requestUrl = %s, options = %j',
-        httpMethod, requestUrl, options);
-
-    // Prepare the request headers.
-    var defaultHeaders = {};
-    if (typeof navigator === 'object') {
-        defaultHeaders[H.USER_AGENT] = navigator.userAgent;
+export default class HttpClient extends EventEmitter {
+    constructor(config) {
+        super();
+        this.config = config;
+        this._req = null;
     }
-    else {
-        defaultHeaders[H.USER_AGENT] = util.format('bce-sdk-nodejs/%s/%s/%s', require('../package.json').version,
-            process.platform, process.version);
-    }
-    defaultHeaders[H.X_BCE_DATE] = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-    defaultHeaders[H.CONNECTION] = 'close';
-    defaultHeaders[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
-    defaultHeaders[H.HOST] = options.host;
 
-    headers = u.extend({}, defaultHeaders, headers);
+    sendRequest(httpMethod, path, body, headers = {}, params = {}, signFunction = u.noop, outputStream) {
+        let requestUrl = this._getRequestUrl(path, params);
+        let options = url.parse(requestUrl);
+        debug('httpMethod = %s, requestUrl = %s, options = %j', httpMethod, requestUrl, options);
 
-    // if (!headers.hasOwnProperty(H.X_BCE_REQUEST_ID)) {
-    //    headers[H.X_BCE_REQUEST_ID] = this._generateRequestId();
-    // }
+        let userAgent = typeof navigator === 'object'
+            ? navigator.userAgent
+            : util.format('bce-sdk-js/%s/%s', process.platform, process.version);
 
-    // Check the content-length
-    if (!headers.hasOwnProperty(H.CONTENT_LENGTH)) {
-        var contentLength = this._guessContentLength(body);
-        if (!(contentLength === 0 && /GET|HEAD/i.test(httpMethod))) {
-            // 如果是 GET 或 HEAD 请求，并且 Content-Length 是 0，那么 Request Header 里面就不要出现 Content-Length
-            // 否则本地计算签名的时候会计算进去，但是浏览器发请求的时候不一定会有，此时导致 Signature Mismatch 的情况
-            headers[H.CONTENT_LENGTH] = contentLength;
+        let defaultHeaders = {
+            [H.X_BCE_DATE]: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+            [H.CONNECTION]: 'close',
+            [H.CONTENT_TYPE]: 'application/json; charset=UTF-8',
+            [H.HOST]: options.host,
+            [H.USER_AGENT]: userAgent
+        };
+
+        headers = u.extend(defaultHeaders, headers);
+
+        if (!headers.hasOwnProperty(H.CONTENT_LENGTH)) {
+            let contentLength = helper.guessContentLength(body);
+            if (!(contentLength === 0 && /GET|HEAD/i.test(httpMethod))) {
+                // 如果是 GET 或 HEAD 请求，并且 Content-Length 是 0，那么 Request Header 里面就不要出现 Content-Length
+                // 否则本地计算签名的时候会计算进去，但是浏览器发请求的时候不一定会有，此时导致 Signature Mismatch 的情况
+                headers[H.CONTENT_LENGTH] = contentLength;
+            }
         }
-    }
 
-    var client = this;
-    options.method = httpMethod;
-    options.headers = headers;
+        options.method = httpMethod;
+        options.headers = headers;
 
-    // 通过browserify打包后，在Safari下并不能有效处理server的content-type
-    // 参考ISSUE：https://github.com/jhiesey/stream-http/issues/8
-    options.mode = 'prefer-fast';
+        // 通过browserify打包后，在Safari下并不能有效处理server的content-type
+        // 参考ISSUE：https://github.com/jhiesey/stream-http/issues/8
+        options.mode = 'prefer-fast';
 
-    // rejectUnauthorized: If true, the server certificate is verified against the list of supplied CAs.
-    // An 'error' event is emitted if verification fails.
-    // Verification happens at the connection level, before the HTTP request is sent.
-    options.rejectUnauthorized = false;
+        // rejectUnauthorized: If true, the server certificate is verified against the list of supplied CAs.
+        // An 'error' event is emitted if verification fails.
+        // Verification happens at the connection level, before the HTTP request is sent.
+        options.rejectUnauthorized = false;
 
-    if (typeof signFunction === 'function') {
-        var promise = signFunction(this.config.credentials, httpMethod, path, params, headers);
-        if (isPromise(promise)) {
-            return promise.then(function (authorization, xbceDate) {
-                headers[H.AUTHORIZATION] = authorization;
-                if (xbceDate) {
+        return Q.resolve(signFunction(this.config.credentials, httpMethod, path, params, headers))
+            .then((authorization, xbceDate) => {
+                if (u.isString(authorization)) {
+                    headers[H.AUTHORIZATION] = authorization;
+                }
+
+                if (u.isString(xbceDate)) {
                     headers[H.X_BCE_DATE] = xbceDate;
                 }
+
                 debug('options = %j', options);
-                return client._doRequest(options, body, outputStream);
+                return this._doRequest(options, body, outputStream);
             });
-        }
-        else if (typeof promise === 'string') {
-            headers[H.AUTHORIZATION] = promise;
-            debug('options = %j', options);
-        }
-        else {
-            throw new Error('Invalid signature = (' + promise + ')');
-        }
     }
 
-    return client._doRequest(options, body, outputStream);
-};
-
-function isPromise(obj) {
-    return obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
-}
-
-HttpClient.prototype._isValidStatus = function (statusCode) {
-    return statusCode >= 200 && statusCode < 300;
-};
-
-HttpClient.prototype._doRequest = function (options, body, outputStream) {
-    var deferred = Q.defer();
-    var api = options.protocol === 'https:' ? https : http;
-    var client = this;
-
-    var req = client._req = api.request(options, function (res) {
-        if (client._isValidStatus(res.statusCode) && outputStream
-            && outputStream instanceof stream.Writable) {
-            res.pipe(outputStream);
-            outputStream.on('finish', function () {
-                deferred.resolve(success(client._fixHeaders(res.headers), {}));
-            });
-            outputStream.on('error', function (error) {
-                deferred.reject(error);
-            });
-            return;
-        }
-        deferred.resolve(client._recvResponse(res));
-    });
-
-    if (req.xhr && typeof req.xhr.upload === 'object') {
-        u.each(['progress', 'error', 'abort'], function (eventName) {
-            req.xhr.upload.addEventListener(eventName, function (evt) {
-                client.emit(eventName, evt);
-            }, false);
-        });
+    _isValidStatus(statusCode) {
+        return statusCode >= 200 && statusCode < 300;
     }
 
-    req.on('error', function (error) {
-        deferred.reject(error);
-    });
+    _doRequest(options, body, outputStream) {
+        let deferred = Q.defer();
+        let network = options.protocol === 'https:' ? https : http;
 
-    try {
-        client._sendRequest(req, body);
-    }
-    catch (ex) {
-        deferred.reject(ex);
-    }
-    return deferred.promise;
-};
-
-HttpClient.prototype._generateRequestId = function () {
-    function chunk() {
-        var v = (~~(Math.random() * 0xffff)).toString(16);
-        if (v.length < 4) {
-            v += new Array(4 - v.length + 1).join('0');
-        }
-        return v;
-    }
-
-    return util.format('%s%s-%s-%s-%s-%s%s%s',
-        chunk(), chunk(), chunk(), chunk(),
-        chunk(), chunk(), chunk(), chunk());
-};
-
-HttpClient.prototype._guessContentLength = function (data) {
-    if (data == null) {
-        return 0;
-    }
-    else if (typeof data === 'string') {
-        return Buffer.byteLength(data);
-    }
-    else if (typeof data === 'object') {
-        if (typeof Blob !== 'undefined' && data instanceof Blob) {
-            return data.size;
-        }
-        if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) {
-            return data.byteLength;
-        }
-        if (Buffer.isBuffer(data)) {
-            return data.length;
-        }
-        /*
-         if (typeof FormData !== 'undefined' && data instanceof FormData) {
-         }
-         */
-    }
-    else if (Buffer.isBuffer(data)) {
-        return data.length;
-    }
-
-    throw new Error('No Content-Length is specified.');
-};
-
-HttpClient.prototype._fixHeaders = function (headers) {
-    var fixedHeaders = {};
-
-    if (headers) {
-        Object.keys(headers).forEach(function (key) {
-            var value = headers[key].trim();
-            if (value) {
-                key = key.toLowerCase();
-                if (key === 'etag') {
-                    value = value.replace(/"/g, '');
-                }
-                fixedHeaders[key] = value;
+        let req = network.request(options, res => {
+            if (this._isValidStatus(res.statusCode) && outputStream
+                && outputStream instanceof stream.Writable) {
+                res.pipe(outputStream);
+                outputStream.on('finish', () => {
+                    deferred.resolve(this.success(helper.fixHeaders(res.headers)));
+                });
+                outputStream.on('error', error => deferred.reject(error));
+                return;
             }
+            deferred.resolve(this._recvResponse(res));
         });
-    }
 
-    return fixedHeaders;
-};
-
-HttpClient.prototype._recvResponse = function (res) {
-    var responseHeaders = this._fixHeaders(res.headers);
-    var statusCode = res.statusCode;
-
-    function parseHttpResponseBody(raw) {
-        var contentType = responseHeaders['content-type'];
-
-        if (!raw.length) {
-            return {};
+        if (req.xhr && typeof req.xhr.upload === 'object') {
+            u.each(['progress', 'error', 'abort'], eventName => {
+                req.xhr.upload.addEventListener(eventName,
+                    evt => this.emit(eventName, evt), false);
+            });
         }
-        else if (contentType
-            && /(application|text)\/json/.test(contentType)) {
-            return JSON.parse(raw.toString());
-        }
-        return raw;
-    }
 
-    var deferred = Q.defer();
-
-    var payload = [];
-    /*eslint-disable*/
-    res.on('data', function (chunk) {
-        if (Buffer.isBuffer(chunk)) {
-            payload.push(chunk);
-        }
-        else {
-            // xhr2返回的内容是 string，不是 Buffer，导致 Buffer.concat 的时候报错了
-            payload.push(new Buffer(chunk));
-        }
-    });
-    res.on('error', function (e) {
-        deferred.reject(e);
-    });
-    /*eslint-enable*/
-    res.on('end', function () {
-        var raw = Buffer.concat(payload);
-        var responseBody = null;
+        req.on('error', error => deferred.reject(error));
 
         try {
-            responseBody = parseHttpResponseBody(raw);
+            this._req = req;
+            this._sendRequest(req, body);
         }
-        catch (e) {
-            deferred.reject(e);
+        catch (ex) {
+            deferred.reject(ex);
+        }
+
+        return deferred.promise;
+    }
+
+    _sendRequest(req, data) {
+        if (!data) {
+            req.end();
             return;
         }
 
-        if (statusCode >= 100 && statusCode < 200) {
-            deferred.reject(failure(statusCode, 'Can not handle 1xx http status code.'));
+        if (typeof data === 'string') {
+            data = new Buffer(data);
         }
-        else if (statusCode < 100 || statusCode >= 300) {
-            if (responseBody.requestId) {
-                deferred.reject(failure(statusCode, responseBody.message,
-                    responseBody.code, responseBody.requestId));
+
+        if (Buffer.isBuffer(data) || helper.isXHR2Compatible(data)) {
+            req.write(data);
+            req.end();
+        }
+        else if (data instanceof stream.Readable) {
+            if (!data.readable) {
+                throw new Error('stream is not readable');
+            }
+
+            data.on('data', chunk => req.write(chunk));
+            data.on('end', () => req.end());
+        }
+        else {
+            throw new Error('Invalid body type = ' + typeof data);
+        }
+    }
+
+    _recvResponse(res) {
+        let responseHeaders = helper.fixHeaders(res.headers);
+        let statusCode = res.statusCode;
+
+        function parseHttpResponseBody(raw) {
+            let contentType = responseHeaders['content-type'];
+
+            if (!raw.length) {
+                return {};
+            }
+            else if (contentType
+                && /(application|text)\/json/.test(contentType)) {
+                return JSON.parse(raw.toString());
+            }
+            return raw;
+        }
+
+        let deferred = Q.defer();
+
+        let payload = [];
+        res.on('data', chunk => {
+            if (Buffer.isBuffer(chunk)) {
+                payload.push(chunk);
             }
             else {
-                deferred.reject(failure(statusCode, responseBody));
+                // xhr2返回的内容是 string，不是 Buffer，导致 Buffer.concat 的时候报错了
+                payload.push(new Buffer(chunk));
             }
+        });
+        res.on('error', e => deferred.reject(e));
+        res.on('end', () => {
+            let raw = Buffer.concat(payload);
+            let responseBody = null;
+
+            try {
+                responseBody = parseHttpResponseBody(raw);
+            }
+            catch (e) {
+                deferred.reject(e);
+                return;
+            }
+
+            if (statusCode >= 100 && statusCode < 200) {
+                deferred.reject(this.failure(statusCode, 'Can not handle 1xx http status code.'));
+            }
+            else if (statusCode < 100 || statusCode >= 300) {
+                if (responseBody.requestId) {
+                    deferred.reject(this.failure(statusCode, responseBody.message,
+                        responseBody.code, responseBody.requestId));
+                }
+                else {
+                    deferred.reject(this.failure(statusCode, responseBody));
+                }
+            }
+
+            deferred.resolve(this.success(responseHeaders, responseBody));
+        });
+
+        return deferred.promise;
+    }
+
+    buildQueryString(params) {
+        return querystring.stringify(params);
+    }
+
+    _getRequestUrl(path, params) {
+        let uri = path;
+        let qs = this.buildQueryString(params);
+        if (qs) {
+            uri += '?' + qs;
         }
 
-        deferred.resolve(success(responseHeaders, responseBody));
-    });
-
-    return deferred.promise;
-};
-
-/*eslint-disable*/
-function isXHR2Compatible(obj) {
-    if (typeof Blob !== 'undefined' && obj instanceof Blob) {
-        return true;
+        return this.config.endpoint + uri;
     }
-    if (typeof ArrayBuffer !== 'undefined' && obj instanceof ArrayBuffer) {
-        return true;
+
+    success(httpHeaders, body = {}) {
+        return {
+            [H.X_HTTP_HEADERS]: httpHeaders,
+            [H.X_BODY]: body
+        };
     }
-    if (typeof FormData !== 'undefined' && obj instanceof FormData) {
-        return true;
+
+    failure(statusCode, message, code, requestId) {
+        return {
+            [H.X_STATUS_CODE]: statusCode,
+            [H.X_MESSAGE]: Buffer.isBuffer(message) ? String(message) : message,
+            [H.X_CODE]: code,
+            [H.X_REQUEST_ID]: requestId
+        };
     }
 }
-/*eslint-enable*/
 
-HttpClient.prototype._sendRequest = function (req, data) {
-    /*eslint-disable*/
-    if (!data) {
-        req.end();
-        return;
-    }
-    if (typeof data === 'string') {
-        data = new Buffer(data);
-    }
-    /*eslint-enable*/
 
-    if (Buffer.isBuffer(data) || isXHR2Compatible(data)) {
-        req.write(data);
-        req.end();
-    }
-    else if (data instanceof stream.Readable) {
-        if (!data.readable) {
-            throw new Error('stream is not readable');
-        }
-
-        data.on('data', function (chunk) {
-            req.write(chunk);
-        });
-        data.on('end', function () {
-            req.end();
-        });
-    }
-    else {
-        throw new Error('Invalid body type = ' + typeof data);
-    }
-};
-
-HttpClient.prototype.buildQueryString = function (params) {
-    return require('querystring').stringify(params);
-};
-
-HttpClient.prototype._getRequestUrl = function (path, params) {
-    var uri = path;
-    var qs = this.buildQueryString(params);
-    if (qs) {
-        uri += '?' + qs;
-    }
-
-    return this.config.endpoint + uri;
-};
-
-function success(httpHeaders, body) {
-    var response = {};
-
-    response[H.X_HTTP_HEADERS] = httpHeaders;
-    response[H.X_BODY] = body;
-
-    return response;
-}
-
-function failure(statusCode, message, code, requestId) {
-    var response = {};
-
-    response[H.X_STATUS_CODE] = statusCode;
-    response[H.X_MESSAGE] = Buffer.isBuffer(message) ? String(message) : message;
-    if (code) {
-        response[H.X_CODE] = code;
-    }
-    if (requestId) {
-        response[H.X_REQUEST_ID] = requestId;
-    }
-
-    return response;
-}
-
-module.exports = HttpClient;
-
-/* vim: set ts=4 sw=4 sts=4 tw=120: */

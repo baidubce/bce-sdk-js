@@ -16,27 +16,25 @@
 
 /* eslint fecs-camelcase:[2,{"ignore":["/file_(name|data)/"]}] */
 
-var path = require('path');
-var fs = require('fs');
+import path from 'path';
+import fs from 'fs';
 
-var debug = require('debug')('doc_client.spec');
-var expect = require('expect.js');
+import _debug from 'debug';
+import expect from 'expect.js';
 
-var config = require('../config');
-var DocClient = require('../../').DocClient;
-var BosClient = require('../../').BosClient;
-var crypto = require('../../src/crypto');
-var helper = require('./helper');
+import config from '../config';
+import {BosClient, DocClient} from '../..';
+import crypto from '../../src/crypto';
+import helper from './helper';
+
+let debug = _debug('doc_client.spec');
 
 describe('DocClient.Notification', function () {
-    var fail;
-    var notification;
+    let notification;
 
     this.timeout(10 * 60 * 1000);
 
     beforeEach(function () {
-        fail = helper.fail(this);
-
         notification = new DocClient.Notification(config.doc);
 
         return notification.removeAll();
@@ -51,14 +49,14 @@ describe('DocClient.Notification', function () {
     });
 
     it('create', function () {
-        var name = 'haha';
-        var endpoint = 'http://www.baidu.com';
+        let name = 'haha';
+        let endpoint = 'http://www.baidu.com';
         return notification.create(name, endpoint)
             .then(function () {
-                return notification.get()
+                return notification.get();
             })
             .then(function (response) {
-                var body = response.body;
+                let body = response.body;
                 expect(body.name).to.eql(name);
                 expect(body.endpoint).to.eql(endpoint);
                 expect(body.createTime).not.to.eql(undefined);
@@ -83,8 +81,8 @@ describe('DocClient.Notification', function () {
     });
 
     it('create with invalid name', function () {
-        var name = '你好';
-        var endpoint = 'http://www.baidu.com';
+        let name = '你好';
+        let endpoint = 'http://www.baidu.com';
         return notification.create(name, endpoint)
             .then(function () {
                 expect().fail('SHOULD NOT REACH HERE.');
@@ -96,8 +94,8 @@ describe('DocClient.Notification', function () {
     });
 
     it('create with invalid endpoint', function () {
-        var name = 'haha';
-        var endpoint = new Array(300).join('a');
+        let name = 'haha';
+        let endpoint = new Array(300).join('a');
         return notification.create(name, endpoint)
             .then(function () {
                 expect().fail('SHOULD NOT REACH HERE.');
@@ -110,14 +108,11 @@ describe('DocClient.Notification', function () {
 });
 
 describe('DocClient.Document', function () {
-    var fail;
-    var document;
+    let document;
 
     this.timeout(10 * 60 * 1000);
 
     beforeEach(function () {
-        fail = helper.fail(this);
-
         document = new DocClient.Document(config.doc);
 
         return document.removeAll();
@@ -128,8 +123,8 @@ describe('DocClient.Document', function () {
     });
 
     it('create from local file', function () {
-        var file = path.join(__dirname, 'doc_client.spec.txt');
-        var documentId;
+        let file = path.join(__dirname, 'doc_client.spec.txt');
+        let documentId;
         return document.create(file)
             .then(function (response) {
                 debug(response);
@@ -141,7 +136,7 @@ describe('DocClient.Document', function () {
                 expect(response.body.bucket).not.to.be(undefined);
                 expect(response.body.object).not.to.be(undefined);
 
-                var bosClient = new BosClient({
+                let bosClient = new BosClient({
                     endpoint: response.body.bosEndpoint,
                     credentials: config.doc.credentials
                 });
@@ -158,7 +153,7 @@ describe('DocClient.Document', function () {
                     return document.get(documentId).then(function (response) {
                         debug(response.body);
                         // UPLOADING/PROCESSING/PUBLISHED/FAILED
-                        var status = response.body.status;
+                        let status = response.body.status;
                         if (status === 'FAILED') {
                             throw status;
                         }
@@ -173,7 +168,7 @@ describe('DocClient.Document', function () {
             })
             .then(function (response) {
                 debug(response);
-                var body = response.body;
+                let body = response.body;
                 expect(body.docId).not.to.be(undefined);
                 expect(body.publishTime).not.to.be(undefined);
                 expect(body.publishInfo).not.to.be(undefined);
@@ -183,7 +178,7 @@ describe('DocClient.Document', function () {
             })
             .then(function (response) {
                 debug(response);
-                var body = response.body;
+                let body = response.body;
                 expect(body.documentId).to.eql(documentId);
                 expect(body.host).not.to.be(undefined);
                 expect(body.docId).not.to.be(undefined);
@@ -194,7 +189,7 @@ describe('DocClient.Document', function () {
     });
 
     it('create from local file with invalid md5', function () {
-        var file = path.join(__dirname, 'doc_client.spec.txt');
+        let file = path.join(__dirname, 'doc_client.spec.txt');
         return document.create(file, {meta: {md5: 'haha'}})
             .catch(function (error) {
                 expect(error.status_code).to.eql(400);
@@ -204,7 +199,7 @@ describe('DocClient.Document', function () {
     });
 
     it('create from buffer without format and title', function () {
-        var buffer = fs.readFileSync(path.join(__dirname, 'doc_client.spec.txt'));
+        let buffer = fs.readFileSync(path.join(__dirname, 'doc_client.spec.txt'));
         return document.create(buffer)
             .catch(function (error) {
                 expect(error.message).to.eql('buffer type required options.format and options.title');
@@ -212,7 +207,7 @@ describe('DocClient.Document', function () {
     });
 
     it('create from buffer with format and title', function () {
-        var buffer = fs.readFileSync(path.join(__dirname, 'doc_client.spec.txt'));
+        let buffer = fs.readFileSync(path.join(__dirname, 'doc_client.spec.txt'));
         return document.create(buffer, {format: 'txt', title: 'hello world'})
             .then(function (response) {
                 expect(response.body.documentId).not.to.be(undefined);
@@ -225,25 +220,25 @@ describe('DocClient.Document', function () {
     it('list', function () {
         return document.list()
             .then(function (response) {
-                var documents = response.body.documents || [];
+                let documents = response.body.documents || [];
                 expect(documents.length).to.eql(0);
             });
     });
 
     it('create from bos', function () {
-        var bosClient = new BosClient(config.bos);
-        var bucket = 'bce-bos-uploader';
-        var object = 'doc_client.spec.txt';
-        var title = '你好，世界.txt';
-        var fsize = fs.lstatSync(__filename).size;
-        var bceMetaMd5;
+        let bosClient = new BosClient(config.bos);
+        let bucket = 'bce-bos-uploader';
+        let object = 'doc_client.spec.txt';
+        let title = '你好，世界.txt';
+        let fsize = fs.lstatSync(__filename).size;
+        let bceMetaMd5;
 
         return crypto.md5file(__filename, 'hex')
             .then(function (md5) {
                 bceMetaMd5 = md5;
                 return bosClient.putObjectFromFile(bucket, object, __filename, {
                     'x-bce-meta-md5': md5
-                })
+                });
             })
             .then(function () {
                 return bosClient.getObjectMetadata(bucket, object);
@@ -264,7 +259,7 @@ describe('DocClient.Document', function () {
             })
             .then(function (response) {
                 debug(response);
-                var body = response.body;
+                let body = response.body;
                 expect(body.title).to.eql(title);
                 expect(body.format).to.eql('txt');
                 expect(body.meta.md5).to.eql(bceMetaMd5);
@@ -272,10 +267,4 @@ describe('DocClient.Document', function () {
                 expect(body.status).to.eql('PROCESSING');
             });
     });
-
-
-    xit('create from blob', function () {});
 });
-
-
-/* vim: set ts=4 sw=4 sts=4 tw=120: */

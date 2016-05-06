@@ -13,24 +13,29 @@
  * @file src/helper.js
  * @author leeight
  */
-var fs = require('fs');
-var stream = require('stream');
 
-var async = require('async');
-var u = require('underscore');
-var Q = require('q');
-var debug = require('debug')('bce-sdk:helper');
+/* eslint max-params:[0,10] */
+
+import fs from 'fs';
+import stream from 'stream';
+
+import async from 'async';
+import u from 'underscore';
+import Q from 'q';
+import _debug from 'debug';
+
+const debug = _debug('bce-sdk:helper');
 
 // 超过这个限制就开始分片上传
-var MIN_MULTIPART_SIZE = 5 * 1024 * 1024;   // 5M
+const MIN_MULTIPART_SIZE = 5 * 1024 * 1024;   // 5M
 
 // 分片上传的时候，每个分片的大小
-var PART_SIZE          = 1 * 1024 * 1024;   // 1M
+const PART_SIZE          = 1 * 1024 * 1024;   // 1M
 
-var DATA_TYPE_FILE     = 1;
-var DATA_TYPE_BUFFER   = 2;
-var DATA_TYPE_STREAM   = 3;
-var DATA_TYPE_BLOB     = 4;
+const DATA_TYPE_FILE     = 1;
+const DATA_TYPE_BUFFER   = 2;
+const DATA_TYPE_STREAM   = 3;
+const DATA_TYPE_BLOB     = 4;
 
 /**
  * 自适应的按需上传文件
@@ -42,9 +47,9 @@ var DATA_TYPE_BLOB     = 4;
  * @param {Object} options The request options.
  * @return {Promise}
  */
-exports.upload = function (client, bucket, object, data, options) {
-    var contentLength = 0;
-    var dataType = -1;
+export let upload = (client, bucket, object, data, options) => {
+    let contentLength = 0;
+    let dataType = -1;
     if (typeof data === 'string') {
         // 文件路径
         // TODO 如果不存在的话，会抛异常，导致程序退出？
@@ -93,36 +98,22 @@ exports.upload = function (client, bucket, object, data, options) {
     }
 };
 
-/*eslint-disable*/
-/**
- * 自适应的按需上传文件
- *
- * @param {BosClient} client The bos client instance.
- * @param {string|Buffer|Blob} data The uploaded content.
- * @param {number} dataType The body data type.
- * @param {string} bucket The bucket name.
- * @param {string} object The object name.
- * @param {number} size The body size.
- * @param {number} partSize The multi-part size.
- * @param {Object} options The request options.
- * @return {Promise}
- */
 function uploadViaMultipart(client, data, dataType, bucket, object, size, partSize, options) {
-    var uploadId;
+    let uploadId;
 
     return client.initiateMultipartUpload(bucket, object, options)
-        .then(function (response) {
+        .then(response => {
             uploadId = response.body.uploadId;
             debug('initiateMultipartUpload = %j', response);
 
-            var deferred = Q.defer();
-            var tasks = getTasks(data, uploadId, bucket, object, size, partSize);
-            var state = {
+            let deferred = Q.defer();
+            let tasks = getTasks(data, uploadId, bucket, object, size, partSize);
+            let state = {
                 lengthComputable: true,
                 loaded: 0,
                 total: tasks.length
             };
-            async.mapLimit(tasks, 2, uploadPart(client, dataType, state), function (error, results) {
+            async.mapLimit(tasks, 2, uploadPart(client, dataType, state), (error, results) => {
                 if (error) {
                     deferred.reject(error);
                 }
@@ -132,8 +123,8 @@ function uploadViaMultipart(client, data, dataType, bucket, object, size, partSi
             });
             return deferred.promise;
         })
-        .then(function (responses) {
-            var parts = u.map(responses, function (response, index) {
+        .then(responses => {
+            let parts = u.map(responses, (response, index) => {
                 return {
                     partNumber: index + 1,
                     eTag: response.http_headers.etag
@@ -143,18 +134,15 @@ function uploadViaMultipart(client, data, dataType, bucket, object, size, partSi
             return client.completeMultipartUpload(bucket, object, uploadId, parts);
         });
 }
-/*eslint-enable*/
 
 function uploadPart(client, dataType, state) {
-    return function (task, callback) {
-        var resolve = function (response) {
+    return (task, callback) => {
+        let resolve = response => {
             ++state.loaded;
             client.emit('progress', state);
             callback(null, response);
         };
-        var reject = function (error) {
-            callback(error);
-        };
+        let reject = error => callback(error);
 
         if (dataType === DATA_TYPE_FILE) {
             debug('client.uploadPartFromFile(%j)', u.omit(task, 'data'));
@@ -165,14 +153,14 @@ function uploadPart(client, dataType, state) {
         else if (dataType === DATA_TYPE_BUFFER) {
             // 没有直接 uploadPartFromBuffer 的接口，借用 DataUrl
             debug('client.uploadPartFromDataUrl(%j)', u.omit(task, 'data'));
-            var dataUrl = task.data.slice(task.start, task.stop + 1).toString('base64');
+            let dataUrl = task.data.slice(task.start, task.stop + 1).toString('base64');
             return client.uploadPartFromDataUrl(task.bucket, task.object,
                 task.uploadId, task.partNumber, task.partSize,
                 dataUrl).then(resolve, reject);
         }
         else if (dataType === DATA_TYPE_BLOB) {
             debug('client.uploadPartFromBlob(%j)', u.omit(task, 'data'));
-            var blob = task.data.slice(task.start, task.stop + 1);
+            let blob = task.data.slice(task.start, task.stop + 1);
             return client.uploadPartFromBlob(task.bucket, task.object,
                 task.uploadId, task.partNumber, task.partSize,
                 blob).then(resolve, reject);
@@ -181,14 +169,14 @@ function uploadPart(client, dataType, state) {
 }
 
 function getTasks(data, uploadId, bucket, object, size, partSize) {
-    var leftSize = size;
-    var offset = 0;
-    var partNumber = 1;
+    let leftSize = size;
+    let offset = 0;
+    let partNumber = 1;
 
-    var tasks = [];
+    let tasks = [];
     while (leftSize > 0) {
         /*eslint-disable*/
-        var _partSize = Math.min(leftSize, partSize);
+        let _partSize = Math.min(leftSize, partSize);
         /*eslint-enable*/
         tasks.push({
             data: data,   // Buffer or Blob
@@ -208,6 +196,63 @@ function getTasks(data, uploadId, bucket, object, size, partSize) {
 
     return tasks;
 }
+
+export let guessContentLength = data => {
+    if (data == null) {
+        return 0;
+    }
+    else if (typeof data === 'string') {
+        return Buffer.byteLength(data);
+    }
+    else if (Buffer.isBuffer(data)) {
+        return data.length;
+    }
+    else if (typeof data === 'object') {
+        if (typeof Blob !== 'undefined' && data instanceof Blob) {
+            return data.size;
+        }
+        if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) {
+            return data.byteLength;
+        }
+    }
+
+    throw new Error('No Content-Length is specified.');
+};
+
+export let fixHeaders = headers => {
+    let fixedHeaders = {};
+
+    if (headers) {
+        Object.keys(headers).forEach(key => {
+            let value = headers[key].trim();
+            if (value) {
+                key = key.toLowerCase();
+                if (key === 'etag') {
+                    value = value.replace(/"/g, '');
+                }
+                fixedHeaders[key] = value;
+            }
+        });
+    }
+
+    return fixedHeaders;
+};
+
+export let isXHR2Compatible = obj => {
+    if (typeof Blob !== 'undefined' && obj instanceof Blob) {
+        return true;
+    }
+
+    if (typeof ArrayBuffer !== 'undefined' && obj instanceof ArrayBuffer) {
+        return true;
+    }
+
+    if (typeof FormData !== 'undefined' && obj instanceof FormData) {
+        return true;
+    }
+
+    return false;
+};
 
 
 

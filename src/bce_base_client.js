@@ -16,99 +16,79 @@
 
 /* eslint-env node */
 
-var util = require('util');
-var EventEmitter = require('events').EventEmitter;
+import util from 'util';
+import {EventEmitter} from 'events';
 
-var Q = require('q');
-var u = require('underscore');
+import Q from 'q';
+import u from 'underscore';
 
-var config = require('./config');
-var Auth = require('./auth');
-var HttpClient = require('./http_client');
-var H = require('./headers');
+import config from './config';
+import Auth from './auth';
+import HttpClient from './http_client';
+import * as H from './headers';
 
-/**
- * BceBaseClient
- *
- * @constructor
- * @param {Object} clientConfig The bce client configuration.
- * @param {string} serviceId The service id.
- * @param {boolean=} regionSupported The service supported region or not.
- */
-function BceBaseClient(clientConfig, serviceId, regionSupported) {
-    EventEmitter.call(this);
-
-    this.config = u.extend({}, config.DEFAULT_CONFIG, clientConfig);
-    this.serviceId = serviceId;
-    this.regionSupported = !!regionSupported;
-
-    this.config.endpoint = this._computeEndpoint();
-
-    /**
-     * @type {HttpClient}
-     */
-    this._httpAgent = null;
-}
-util.inherits(BceBaseClient, EventEmitter);
-
-BceBaseClient.prototype._computeEndpoint = function () {
-    if (this.config.endpoint) {
-        return this.config.endpoint;
+export default class BceBaseClient extends EventEmitter {
+    constructor(clientConfig, serviceId, regionSupported) {
+        super();
+        this.config = u.extend({}, config.DEFAULT_CONFIG, clientConfig);
+        this.serviceId = serviceId;
+        this.regionSupported = !!regionSupported;
+        this.config.endpoint = this._computeEndpoint();
+        this._httpAgent = null;
     }
 
-    if (this.regionSupported) {
-        return util.format('%s://%s.%s.%s',
+    _computeEndpoint() {
+        if (this.config.endpoint) {
+            return this.config.endpoint;
+        }
+
+        if (this.regionSupported) {
+            return util.format('%s://%s.%s.%s',
+                this.config.protocol,
+                this.serviceId,
+                this.config.region,
+                config.DEFAULT_SERVICE_DOMAIN);
+        }
+        return util.format('%s://%s.%s',
             this.config.protocol,
             this.serviceId,
-            this.config.region,
             config.DEFAULT_SERVICE_DOMAIN);
     }
-    return util.format('%s://%s.%s',
-        this.config.protocol,
-        this.serviceId,
-        config.DEFAULT_SERVICE_DOMAIN);
-};
 
-BceBaseClient.prototype.createSignature = function (credentials, httpMethod, path, params, headers) {
-    return Q.fcall(function () {
-        var auth = new Auth(credentials.ak, credentials.sk);
-        return auth.generateAuthorization(httpMethod, path, params, headers);
-    });
-};
-
-BceBaseClient.prototype.sendRequest = function (httpMethod, resource, varArgs) {
-    var defaultArgs = {
-        body: null,
-        headers: {},
-        params: {},
-        config: {},
-        outputStream: null
-    };
-    var args = u.extend(defaultArgs, varArgs);
-
-    var config = u.extend({}, this.config, args.config);
-    if (config.sessionToken) {
-        args.headers[H.SESSION_TOKEN] = config.sessionToken;
+    createSignature(credentials, httpMethod, path, params, headers) {
+        return Q.fcall(() => {
+            let auth = new Auth(credentials.ak, credentials.sk);
+            return auth.generateAuthorization(httpMethod, path, params, headers);
+        });
     }
 
-    return this.sendHTTPRequest(httpMethod, resource, args, config);
-};
+    sendRequest(httpMethod, resource, varArgs) {
+        let defaultArgs = {
+            body: null,
+            headers: {},
+            params: {},
+            config: {},
+            outputStream: null
+        };
+        let args = u.extend(defaultArgs, varArgs);
 
-BceBaseClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, config) {
-    var client = this;
-    var agent = this._httpAgent = new HttpClient(config);
-    u.each(['progress', 'error', 'abort'], function (eventName) {
-        agent.on(eventName, function (evt) {
-            client.emit(eventName, evt);
+        let config = u.extend({}, this.config, args.config);
+        if (config.sessionToken) {
+            args.headers[H.SESSION_TOKEN] = config.sessionToken;
+        }
+
+        return this.sendHTTPRequest(httpMethod, resource, args, config);
+    }
+
+    sendHTTPRequest(httpMethod, resource, args, config) {
+        let agent = this._httpAgent = new HttpClient(config);
+        u.each(['progress', 'error', 'abort'], eventName => {
+            agent.on(eventName, evt => this.emit(eventName, evt));
         });
-    });
 
-    return this._httpAgent.sendRequest(httpMethod, resource, args.body,
-        args.headers, args.params, u.bind(this.createSignature, this),
-        args.outputStream
-    );
-};
-
-module.exports = BceBaseClient;
-
-/* vim: set ts=4 sw=4 sts=4 tw=120: */
+        return this._httpAgent.sendRequest(httpMethod, resource, args.body,
+            args.headers, args.params, u.bind(this.createSignature, this),
+            args.outputStream
+        );
+    }
+}

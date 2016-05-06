@@ -5,7 +5,7 @@
 
 /* eslint-env node */
 
-var mimeTypes = {
+let mimeTypes = {
     'ez': 'application/andrew-inset',
     'aw': 'application/applixware',
     'atom': 'application/atom+xml',
@@ -1001,7 +1001,7 @@ var mimeTypes = {
     'ice': 'x-conference/x-cooltalk'
 };
 
-exports.guess = function (ext) {
+let guess = ext => {
     if (!ext || !ext.length) {
         return 'application/octet-stream';
     }
@@ -1010,3 +1010,5 @@ exports.guess = function (ext) {
     }
     return mimeTypes[ext.toLowerCase()] || 'application/octet-stream';
 };
+
+export default {guess};

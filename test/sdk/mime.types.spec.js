@@ -11,9 +11,9 @@
 * specific language governing permissions and limitations under the License.
 */
 
-var expect = require('expect.js');
+import expect from 'expect.js';
 
-var MimeType = require('../../src/mime.types');
+import MimeType from '../../src/mime.types';
 
 describe('MimeType', function() {
     it('guess', function() {

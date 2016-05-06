@@ -11,18 +11,21 @@
 * specific language governing permissions and limitations under the License.
 */
 
-var util = require('util');
-var fs = require('fs');
+import util from 'util';
+import fs from 'fs';
 
-var Q = require('q');
-var u = require('underscore');
-var expect = require('expect.js');
-var debug = require('debug')('upload_helper.spec');
+import Q from 'q';
+import u from 'underscore';
+import expect from 'expect.js';
+import _debug from 'debug';
 
-var config = require('../config');
-var helper = require('./helper');
-var BosClient = require('../..').BosClient;
-var UploadHelper = require('../../src/helper');
+import config from '../config';
+import helper from './helper';
+import {BosClient} from '../..'
+import * as UploadHelper from '../../src/helper';
+import crypto from '../../src/crypto';
+
+let debug = _debug('upload_helper.spec');
 
 describe('UploadHelper', function() {
     var client;
@@ -156,7 +159,7 @@ describe('UploadHelper', function() {
                 expect(response.http_headers['content-type']).to.eql('application/octet-stream');
                 expect(response.http_headers['content-length']).to.eql(
                     '' + fs.lstatSync(filename).size);
-                return require('../../src/crypto').md5file(filename)
+                return crypto.md5file(filename)
                     .then(function(md5sum) {
                         expect(response.http_headers['content-md5']).to.eql(md5sum);
                     });

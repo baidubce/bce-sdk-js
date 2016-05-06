@@ -15,57 +15,24 @@
  */
 
 /* eslint-env node */
-/* eslint max-params:[0,10] */
 
-var util = require('util');
-var u = require('underscore');
+import BceBaseClient from './bce_base_client';
 
-var BceBaseClient = require('./bce_base_client');
-
-/**
- * STS支持 - 将STS抽象成一种服务
- *
- * @see https://bce.baidu.com/doc/BOS/API.html#STS.20.E6.9C.8D.E5.8A.A1.E6.8E.A5.E5.8F.A3
- * @constructor
- * @param {Object} config The STS configuration.
- * @extends {BceBaseClient}
- */
-function STS(config) {
-    BceBaseClient.call(this, config, 'sts', true);
-}
-util.inherits(STS, BceBaseClient);
-
-// --- BEGIN ---
-
-STS.prototype.getSessionToken = function (durationSeconds, params, options) {
-    options = options || {};
-
-    var body = '';
-    if (params) {
-        params = u.pick(params, 'id', 'accessControlList');
-
-        if (params.accessControlList) {
-            params.accessControlList = u.map(params.accessControlList, function (acl) {
-                return u.pick(acl, 'eid', 'service', 'region', 'effect', 'resource', 'permission');
-            });
-        }
-
-        body = JSON.stringify(params);
+export default class STS extends BceBaseClient {
+    constructor(config) {
+        super(config, 'sts', true);
     }
 
-    var url = '/v1/sessionToken';
+    getSessionToken(durationSeconds, params, options = {}) {
+        let url = '/v1/sessionToken';
+        let body = params != null ? JSON.stringify(params) : '';
 
-    return this.sendRequest('POST', url, {
-        config: options.config,
-        params: {
-            durationSeconds: durationSeconds
-        },
-        body: body
-    });
-};
-
-// --- E N D ---
-
-module.exports = STS;
-
-/* vim: set ts=4 sw=4 sts=4 tw=120: */
+        return this.sendRequest('POST', url, {
+            config: options.config,
+            params: {
+                durationSeconds
+            },
+            body
+        });
+    }
+}

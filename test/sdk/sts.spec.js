@@ -14,19 +14,21 @@
  * @author zhouhua
  */
 
-var util = require('util');
-var path = require('path');
-var fs = require('fs');
+import util from 'util';
+import path from 'path';
+import fs from 'fs';
 
-var Q = require('q');
-var u = require('underscore');
-var expect = require('expect.js');
-var debug = require('debug')('sts.spec');
+import Q from 'q';
+import u from 'underscore';
+import expect from 'expect.js';
+import _debug from 'debug';
 
-var config = require('../config');
-var STS = require('../../').STS;
-var BosClient = require('../../').BosClient;
-var helper = require('./helper');
+import config from '../config';
+import {STS, BosClient} from '../../';
+import helper from './helper';
+import crypto from '../../src/crypto';
+
+let debug = _debug('sts.spec');
 
 describe('STS', function () {
     var fail;
@@ -97,9 +99,7 @@ describe('STS', function () {
             })
             .then(function (response) {
                 expect(+response.http_headers['content-length']).to.eql(defaultText.length);
-                expect(response.http_headers['content-md5']).to.eql(
-                    require('../../src/crypto').md5sum(defaultText)
-                );
+                expect(response.http_headers['content-md5']).to.eql(crypto.md5sum(defaultText));
             });
     });
 
@@ -134,9 +134,7 @@ describe('STS', function () {
             })
             .then(function (response) {
                 expect(+response.http_headers['content-length']).to.eql(newText.length);
-                expect(response.http_headers['content-md5']).to.eql(
-                    require('../../src/crypto').md5sum(newText)
-                );
+                expect(response.http_headers['content-md5']).to.eql(crypto.md5sum(newText));
             });
     });
 });

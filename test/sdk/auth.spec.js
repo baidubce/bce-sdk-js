@@ -14,10 +14,10 @@
  * @author leeight
  */
 
-var expect = require('expect.js');
+import expect from 'expect.js';
 
-var Auth = require('../../src/auth');
-var strings = require('../../src/strings');
+import Auth from '../../src/auth';
+import strings from '../../src/strings';
 
 describe('Auth', function () {
     it('queryStringCanonicalization', function () {

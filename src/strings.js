@@ -14,7 +14,7 @@
  * @author leeight
  */
 
-var kEscapedMap = {
+let kEscapedMap = {
     '!': '%21',
     '\'': '%27',
     '(': '%28',
@@ -22,11 +22,9 @@ var kEscapedMap = {
     '*': '%2A'
 };
 
-exports.normalize = function (string, encodingSlash) {
-    var result = encodeURIComponent(string);
-    result = result.replace(/[!'\(\)\*]/g, function ($1) {
-        return kEscapedMap[$1];
-    });
+let normalize = (string, encodingSlash) => {
+    let result = encodeURIComponent(string).replace(/[!'\(\)\*]/g,
+        $1 => kEscapedMap[$1]);
 
     if (encodingSlash === false) {
         result = result.replace(/%2F/gi, '/');
@@ -35,8 +33,10 @@ exports.normalize = function (string, encodingSlash) {
     return result;
 };
 
-exports.trim = function (string) {
-    return (string || '').replace(/^\s+|\s+$/g, '');
+let trim = string => (string || '').replace(/^\s+|\s+$/g, '');
+
+export default {
+    trim,
+    normalize
 };
 
-/* vim: set ts=4 sw=4 sts=4 tw=120: */

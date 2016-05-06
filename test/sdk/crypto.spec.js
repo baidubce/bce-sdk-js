@@ -14,12 +14,12 @@
  * @author leeight
  */
 
-var path = require('path');
-var fs = require('fs');
+import path from 'path';
+import fs from 'fs';
 
-var expect = require('expect.js');
+import expect from 'expect.js';
 
-var crypto = require('../../src/crypto');
+import crypto from '../../src/crypto';
 
 describe('crypto', function () {
     it('md5sum', function () {

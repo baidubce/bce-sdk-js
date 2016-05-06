@@ -60,18 +60,16 @@ SPECS=(
   test/sdk/mime.types.spec.js
   test/sdk/bos_client.spec.js
   test/sdk/doc_client.spec.js
-  test/sdk/lss_client.spec.js
-  test/sdk/mct_client.spec.js
-  test/sdk/bcs_client.spec.js
-  test/sdk/ses_client.spec.js
-  test/sdk/ocr_client.spec.js
-# test/sdk/face_client.spec.js
-# test/sdk/vod_client.spec.js
+#  test/sdk/lss_client.spec.js
+#  test/sdk/mct_client.spec.js
+#  test/sdk/ses_client.spec.js
+#  test/sdk/ocr_client.spec.js
+#  test/sdk/face_client.spec.js
+  test/sdk/vod_client.spec.js
 )
 
 # SPECS=(
-#  test/sdk/doc_client.spec.js
 # )
 
-# node_modules/.bin/mocha -C ${SPECS[@]}
-node_modules/.bin/istanbul cover node_modules/mocha/bin/_mocha --report lcovonly ${SPECS[@]} && cat ./coverage/lcov.info | node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage
+node_modules/.bin/mocha -C --compilers js:babel-register ${SPECS[@]}
+# node_modules/.bin/istanbul cover node_modules/mocha/bin/_mocha --report lcovonly ${SPECS[@]} && cat ./coverage/lcov.info | node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage

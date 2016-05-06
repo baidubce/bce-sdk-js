@@ -11,18 +11,18 @@
 * specific language governing permissions and limitations under the License.
 */
 
-var expect = require('expect.js');
+import expect from 'expect.js';
 
-var Auth = require('../../src/auth');
-var HttpClient = require('../../src/http_client');
-var WMStream = require('../../src/wm_stream');
-var helper = require('./helper');
+import Auth from '../../src/auth';
+import HttpClient from '../../src/http_client';
+import WMStream from '../../src/wm_stream';
+import helper from './helper';
 
-var config = require('../config').bos;
+import {bos as config} from '../config';
 
 function sign_function(credentials, http_method, path, params, headers) {
     var auth = new Auth(credentials.ak, credentials.sk);
-    return auth.generateAuthorization(http_method, path, params, headers);
+    return auth.generateAuthorization(http_method, path, params || {}, headers || {});
 }
 
 describe('HttpClient', function() {

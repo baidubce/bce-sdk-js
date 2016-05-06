@@ -11,19 +11,22 @@
  * specific language governing permissions and limitations under the License.
  */
 
-var util = require('util');
-var path = require('path');
-var fs = require('fs');
+import util from 'util';
+import path from 'path';
+import fs from 'fs';
 
-var Q = require('q');
-var u = require('underscore');
-var expect = require('expect.js');
-var debug = require('debug')('bos_client.spec');
+import Q from 'q';
+import u from 'underscore';
+import expect from 'expect.js';
+import _debug from 'debug';
 
-var config = require('../config');
-var helper = require('./helper');
-var BosClient = require('../..').BosClient;
-var crypto = require('../../src/crypto');
+import config from '../config';
+import helper from './helper';
+import {BosClient} from '../..';
+import crypto from '../../src/crypto';
+
+let debug = _debug('bos_client.spec');
+
 describe('BosClient', function () {
     var client;
     var fail;
@@ -120,9 +123,10 @@ describe('BosClient', function () {
                 ]);
             })
             .then(function (response) {
-                expect(response.body.deleteResult).not.to.be(undefined);
-                expect(response.body.deleteResult.errors).not.to.be(undefined);
-                expect(response.body.deleteResult.errors[0].code).to.eql('NoSuchKey');
+                expect(response.body).not.to.be(undefined);
+                expect(response.body.errors).not.to.be(undefined);
+                expect(response.body.errors[0].code).to.eql('NoSuchKey');
+                expect(response.body.errors[0].key).to.eql('4/' + key);
             });
     });
 
@@ -278,7 +282,7 @@ describe('BosClient', function () {
                 expect(response.http_headers['content-length']).to.eql('11');
                 expect(response.http_headers['content-md5']).to.eql(crypto.md5sum('hello world'));
 
-                return client.generatePresignedUrl(bucket, objectName, 0, 1800, null, {'x-bce-range': '0-5'});
+                return client.generatePresignedUrl(bucket, objectName, new Date(), 1800, {}, {'x-bce-range': '0-5'});
             })
             .then(function (url) {
                 debug('url = %s', url);
@@ -308,7 +312,7 @@ describe('BosClient', function () {
                 expect(response.http_headers['content-length']).to.eql('11');
                 expect(response.http_headers['content-md5']).to.eql(crypto.md5sum('hello world'));
 
-                return client.generatePresignedUrl(bucket, key, 0, 1800, null, {'x-bce-range': '0-5'});
+                return client.generatePresignedUrl(bucket, key, new Date(), 1800, {}, {'x-bce-range': '0-5'});
             })
             .then(function (url) {
                 debug('url = %s', url);
@@ -900,7 +904,7 @@ describe('BosClient', function () {
                 expect(response.http_headers['content-length']).to.eql('11');
                 expect(response.http_headers['content-md5']).to.eql(crypto.md5sum('hello world'));
 
-                return client.generatePresignedUrl(bucket, objectName, 0, 1800, null, {'x-bce-range': '0-5'});
+                return client.generatePresignedUrl(bucket, objectName, new Date(), 1800, {}, {'x-bce-range': '0-5'});
             })
             .then(function (url) {
                 debug('url = %s', url);
@@ -935,7 +939,7 @@ describe('BosClient', function () {
                 expect(response.http_headers['x-bce-next-append-offset']).to.eql('11');
                 expect(response.http_headers['content-md5']).to.eql(crypto.md5sum('hello world'));
 
-                return client.generatePresignedUrl(bucket, key, 0, 1800, null, {'x-bce-range': '0-5'});
+                return client.generatePresignedUrl(bucket, key, new Date(), 1800, {}, {'x-bce-range': '0-5'});
             })
             .then(function (url) {
                 debug('url = %s', url);

@@ -17,31 +17,32 @@
 /* eslint-env node */
 /* eslint max-params:[0,10] */
 
-var util = require('util');
-var path = require('path');
-var fs = require('fs');
-var qs = require('querystring');
+import util from 'util';
+import path from 'path';
+import fs from 'fs';
+import qs from 'querystring';
+import url from 'url';
 
-var u = require('underscore');
-var Q = require('q');
+import u from 'underscore';
+import Q from 'q';
 
-var H = require('./headers');
-var strings = require('./strings');
-var Auth = require('./auth');
-var crypto = require('./crypto');
-var HttpClient = require('./http_client');
-var BceBaseClient = require('./bce_base_client');
-var MimeType = require('./mime.types');
-var WMStream = require('./wm_stream');
-var Multipart = require('./multipart');
+import * as H from './headers';
+import strings from './strings';
+import Auth from './auth';
+import crypto from './crypto';
+import HttpClient from './http_client';
+import BceBaseClient from './bce_base_client';
+import MimeType from './mime.types';
+import WMStream from './wm_stream';
+import Multipart from './multipart';
 
-// var MIN_PART_SIZE = 1048576;                // 1M
-// var THREAD = 2;
-var MAX_PUT_OBJECT_LENGTH = 5368709120;     // 5G
-var MAX_USER_METADATA_SIZE = 2048;          // 2 * 1024
-var MIN_PART_NUMBER = 1;
-var MAX_PART_NUMBER = 10000;
-var COMMAND_MAP = {
+// let MIN_PART_SIZE = 1048576;                // 1M
+// let THREAD = 2;
+const MAX_PUT_OBJECT_LENGTH = 5368709120;     // 5G
+const MAX_USER_METADATA_SIZE = 2048;          // 2 * 1024
+const MIN_PART_NUMBER = 1;
+const MAX_PART_NUMBER = 10000;
+const COMMAND_MAP = {
     scale: 's',
     width: 'w',
     height: 'h',
@@ -65,896 +66,738 @@ var COMMAND_MAP = {
     fontColor: 'fc',
     fontStyle: 'fs'
 };
-var IMAGE_DOMAIN = 'bceimg.com';
+const IMAGE_DOMAIN = 'bceimg.com';
 
-/**
- * BOS service api
- *
- * @see http://gollum.baidu.com/BOS_API#BOS-API文档
- *
- * @constructor
- * @param {Object} config The bos client configuration.
- * @extends {BceBaseClient}
- */
-function BosClient(config) {
-    BceBaseClient.call(this, config, 'bos', true);
+export default class BosClient extends BceBaseClient {
+    constructor(config) {
+        super(config, 'bos', true);
+        this._httpAgent = null;
+    }
 
-    /**
-     * @type {HttpClient}
-     */
-    this._httpAgent = null;
-}
-util.inherits(BosClient, BceBaseClient);
+    // --- B E G I N ---
+    generatePresignedUrl(bucketName, key, timestamp = new Date(), expirationInSeconds = 1800,
+        headers = {}, params = {}, headersToSign = {}, config) {
+        config = u.extend({}, this.config, config);
 
-// --- B E G I N ---
-BosClient.prototype.generatePresignedUrl = function (bucketName, key, timestamp,
-                                                     expirationInSeconds, headers, params, headersToSign, config) {
+        let resource = path.normalize(path.join(
+            '/v1',
+            strings.normalize(bucketName || ''),
+            strings.normalize(key || '', false)
+        )).replace(/\\/g, '/');
 
-    config = u.extend({}, this.config, config);
-    params = params || {};
+        headers.Host = url.parse(config.endpoint).host;
 
-    var resource = path.normalize(path.join(
-        '/v1',
-        strings.normalize(bucketName || ''),
-        strings.normalize(key || '', false)
-    )).replace(/\\/g, '/');
+        let credentials = config.credentials;
+        let auth = new Auth(credentials.ak, credentials.sk);
+        let authorization = auth.generateAuthorization(
+            'GET', resource, params, headers, timestamp, expirationInSeconds,
+            headersToSign);
 
-    headers = headers || {};
-    headers.Host = require('url').parse(config.endpoint).host;
+        params.authorization = authorization;
 
-    var credentials = config.credentials;
-    var auth = new Auth(credentials.ak, credentials.sk);
-    var authorization = auth.generateAuthorization(
-        'GET', resource, params, headers, timestamp, expirationInSeconds,
-        headersToSign);
+        return util.format('%s%s?%s', config.endpoint, resource, qs.encode(params));
+    }
 
-    params.authorization = authorization;
+    generateUrl(bucketName, key, pipeline, cdn) {
+        let resource = path.normalize(path.join(
+            '/v1',
+            strings.normalize(bucketName || ''),
+            strings.normalize(key || '', false)
+        )).replace(/\\/g, '/');
 
-    return util.format('%s%s?%s', config.endpoint, resource, qs.encode(params));
-};
-
-BosClient.prototype.generateUrl = function (bucketName, key, pipeline, cdn) {
-    var resource = path.normalize(path.join(
-        '/v1',
-        strings.normalize(bucketName || ''),
-        strings.normalize(key || '', false)
-    )).replace(/\\/g, '/');
-
-    // pipeline表示如何对图片进行处理.
-    var command = '';
-    if (pipeline) {
-        if (u.isString(pipeline)) {
-            if (/^@/.test(pipeline)) {
-                command = pipeline;
+        // pipeline表示如何对图片进行处理.
+        let command = '';
+        if (pipeline) {
+            if (u.isString(pipeline)) {
+                if (/^@/.test(pipeline)) {
+                    command = pipeline;
+                }
+                else {
+                    command = '@' + pipeline;
+                }
             }
             else {
-                command = '@' + pipeline;
+                command = '@' + u.map(pipeline, function (params) {
+                        return u.map(params, function (value, key) {
+                            return [COMMAND_MAP[key] || key, value].join('_');
+                        }).join(',');
+                    }).join('|');
             }
         }
-        else {
-            command = '@' + u.map(pipeline, function (params) {
-                    return u.map(params, function (value, key) {
-                        return [COMMAND_MAP[key] || key, value].join('_');
-                    }).join(',');
-                }).join('|');
-        }
-    }
-    if (command) {
-        // 需要生成图片转码url
-        if (cdn) {
-            return util.format('http://%s/%s%s', cdn, path.normalize(key), command);
-        }
-        return util.format('http://%s.%s/%s%s', path.normalize(bucketName), IMAGE_DOMAIN, path.normalize(key), command);
-    }
-    return util.format('%s%s%s', this.config.endpoint, resource, command);
-};
-
-BosClient.prototype.listBuckets = function (options) {
-    options = options || {};
-    return this.sendRequest('GET', {config: options.config});
-};
-
-BosClient.prototype.createBucket = function (bucketName, options) {
-    options = options || {};
-
-    return this.sendRequest('PUT', {
-        bucketName: bucketName,
-        config: options.config
-    });
-};
-
-BosClient.prototype.listObjects = function (bucketName, options) {
-    options = options || {};
-
-    var params = u.extend(
-        {maxKeys: 1000},
-        u.pick(options, 'maxKeys', 'prefix', 'marker', 'delimiter')
-    );
-
-    return this.sendRequest('GET', {
-        bucketName: bucketName,
-        params: params,
-        config: options.config
-    });
-};
-
-BosClient.prototype.doesBucketExist = function (bucketName, options) {
-    options = options || {};
-
-    return this.sendRequest('HEAD', {
-        bucketName: bucketName,
-        config: options.config
-    }).then(
-        /*eslint-disable*/
-        function () {
-            return Q(true);
-        },
-        function (e) {
-            if (e && e[H.X_STATUS_CODE] === 403) {
-                return Q(true);
+        if (command) {
+            // 需要生成图片转码url
+            if (cdn) {
+                return util.format('http://%s/%s%s', cdn, path.normalize(key), command);
             }
-            if (e && e[H.X_STATUS_CODE] === 404) {
-                return Q(false);
-            }
-            return Q.reject(e);
+            return util.format('http://%s.%s/%s%s', path.normalize(bucketName), IMAGE_DOMAIN, path.normalize(key), command);
         }
-        /*eslint-enable*/
-    );
-};
-
-BosClient.prototype.deleteBucket = function (bucketName, options) {
-    options = options || {};
-
-    return this.sendRequest('DELETE', {
-        bucketName: bucketName,
-        config: options.config
-    });
-};
-
-BosClient.prototype.setBucketCannedAcl = function (bucketName, cannedAcl, options) {
-    options = options || {};
-
-    var headers = {};
-    headers[H.X_BCE_ACL] = cannedAcl;
-    return this.sendRequest('PUT', {
-        bucketName: bucketName,
-        headers: headers,
-        params: {acl: ''},
-        config: options.config
-    });
-};
-
-BosClient.prototype.setBucketAcl = function (bucketName, acl, options) {
-    options = options || {};
-
-    var headers = {};
-    headers[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
-    return this.sendRequest('PUT', {
-        bucketName: bucketName,
-        body: JSON.stringify({accessControlList: acl}),
-        headers: headers,
-        params: {acl: ''},
-        config: options.config
-    });
-};
-
-BosClient.prototype.getBucketAcl = function (bucketName, options) {
-    options = options || {};
-
-    return this.sendRequest('GET', {
-        bucketName: bucketName,
-        params: {acl: ''},
-        config: options.config
-    });
-};
-
-BosClient.prototype.getBucketLocation = function (bucketName, options) {
-    options = options || {};
-
-    return this.sendRequest('GET', {
-        bucketName: bucketName,
-        params: {location: ''},
-        config: options.config
-    });
-};
-
-BosClient.prototype.deleteMultipleObjects = function (bucketName, objects, options) {
-    options = options || {};
-
-    var body = u.map(objects, function (object) {
-        return {key: object};
-    });
-
-    return this.sendRequest('POST', {
-        bucketName: bucketName,
-        params: {'delete': ''},
-        body: JSON.stringify({
-            'delete': {
-                objects: body
-            }
-        }),
-        config: options.config
-    });
-};
-
-BosClient.prototype.deleteObject = function (bucketName, key, options) {
-    options = options || {};
-
-    return this.sendRequest('DELETE', {
-        bucketName: bucketName,
-        key: key,
-        config: options.config
-    });
-};
-
-BosClient.prototype.putObject = function (bucketName, key, data, options) {
-    if (!key) {
-        throw new TypeError('key should not be empty.');
+        return util.format('%s%s%s', this.config.endpoint, resource, command);
     }
 
-    options = this._checkOptions(options || {});
-
-    return this.sendRequest('PUT', {
-        bucketName: bucketName,
-        key: key,
-        body: data,
-        headers: options.headers,
-        config: options.config
-    });
-};
-
-BosClient.prototype.putObjectFromBlob = function (bucketName, key, blob, options) {
-    var headers = {};
-
-    // https://developer.mozilla.org/en-US/docs/Web/API/Blob/size
-    headers[H.CONTENT_LENGTH] = blob.size;
-    // 对于浏览器调用API的时候，默认不添加 H.CONTENT_MD5 字段，因为计算起来比较慢
-    // 而且根据 API 文档，这个字段不是必填的。
-    options = u.extend(headers, options);
-
-    return this.putObject(bucketName, key, blob, options);
-};
-
-BosClient.prototype.putObjectFromDataUrl = function (bucketName, key, data, options) {
-    data = new Buffer(data, 'base64');
-
-    var headers = {};
-    headers[H.CONTENT_LENGTH] = data.length;
-    // 对于浏览器调用API的时候，默认不添加 H.CONTENT_MD5 字段，因为计算起来比较慢
-    // headers[H.CONTENT_MD5] = require('./crypto').md5sum(data);
-    options = u.extend(headers, options);
-
-    return this.putObject(bucketName, key, data, options);
-};
-
-BosClient.prototype.putObjectFromString = function (bucketName, key, data, options) {
-    options = options || {};
-
-    var headers = {};
-    headers[H.CONTENT_LENGTH] = Buffer.byteLength(data);
-    headers[H.CONTENT_TYPE] = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(key));
-    headers[H.CONTENT_MD5] = crypto.md5sum(data);
-    options = u.extend(headers, options);
-
-    return this.putObject(bucketName, key, data, options);
-};
-
-BosClient.prototype.putObjectFromFile = function (bucketName, key, filename, options) {
-    options = options || {};
-
-    var headers = {};
-
-    // 如果没有显式的设置，就使用默认值
-    var fileSize = fs.statSync(filename).size;
-    var contentLength = u.has(options, H.CONTENT_LENGTH)
-        ? options[H.CONTENT_LENGTH]
-        : fileSize;
-    if (contentLength > fileSize) {
-        throw new Error('options[\'Content-Length\'] should less than ' + fileSize);
+    listBuckets(options = {}) {
+        return this.sendRequest('GET', {config: options.config});
     }
 
-    headers[H.CONTENT_LENGTH] = contentLength;
-
-    // 因为Firefox会在发起请求的时候自动给 Content-Type 添加 charset 属性
-    // 导致我们计算签名的时候使用的 Content-Type 值跟服务器收到的不一样，为了
-    // 解决这个问题，我们需要显式的声明Charset
-    headers[H.CONTENT_TYPE] = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(filename));
-    options = u.extend(headers, options);
-
-    var streamOptions = {
-        start: 0,
-        end: Math.max(0, contentLength - 1)
-    };
-    var fp = fs.createReadStream(filename, streamOptions);
-    if (!u.has(options, H.CONTENT_MD5)) {
-        var me = this;
-        var fp2 = fs.createReadStream(filename, streamOptions);
-        return crypto.md5stream(fp2)
-            .then(function (md5sum) {
-                options[H.CONTENT_MD5] = md5sum;
-                return me.putObject(bucketName, key, fp, options);
-            });
-    }
-
-    return this.putObject(bucketName, key, fp, options);
-};
-
-BosClient.prototype.getObjectMetadata = function (bucketName, key, options) {
-    options = options || {};
-
-    return this.sendRequest('HEAD', {
-        bucketName: bucketName,
-        key: key,
-        config: options.config
-    });
-};
-
-BosClient.prototype.getObject = function (bucketName, key, range, options) {
-    options = options || {};
-
-    var outputStream = new WMStream();
-    return this.sendRequest('GET', {
-        bucketName: bucketName,
-        key: key,
-        headers: {
-            Range: range ? util.format('bytes=%s', range) : ''
-        },
-        config: options.config,
-        outputStream: outputStream
-    }).then(function (response) {
-        response.body = outputStream.store;
-        return response;
-    });
-};
-
-BosClient.prototype.getObjectToFile = function (bucketName, key, filename, range, options) {
-    options = options || {};
-
-    return this.sendRequest('GET', {
-        bucketName: bucketName,
-        key: key,
-        headers: {
-            Range: range ? util.format('bytes=%s', range) : ''
-        },
-        config: options.config,
-        outputStream: fs.createWriteStream(filename)
-    });
-};
-
-BosClient.prototype.copyObject = function (sourceBucketName, sourceKey, targetBucketName, targetKey, options) {
-    /*eslint-disable*/
-    if (!sourceBucketName) {
-        throw new TypeError('sourceBucketName should not be empty');
-    }
-    if (!sourceKey) {
-        throw new TypeError('sourceKey should not be empty');
-    }
-    if (!targetBucketName) {
-        throw new TypeError('targetBucketName should not be empty');
-    }
-    if (!targetKey) {
-        throw new TypeError('targetKey should not be empty');
-    }
-    /*eslint-enable*/
-
-    options = this._checkOptions(options || {});
-    var hasUserMetadata = false;
-    u.some(options.headers, function (value, key) {
-        if (key.indexOf('x-bce-meta-') === 0) {
-            hasUserMetadata = true;
-            return true;
-        }
-    });
-    options.headers['x-bce-copy-source'] = strings.normalize(util.format('/%s/%s',
-        sourceBucketName, sourceKey), false);
-    if (u.has(options.headers, 'ETag')) {
-        options.headers['x-bce-copy-source-if-match'] = options.headers.ETag;
-    }
-    options.headers['x-bce-metadata-directive'] = hasUserMetadata ? 'replace' : 'copy';
-
-    return this.sendRequest('PUT', {
-        bucketName: targetBucketName,
-        key: targetKey,
-        headers: options.headers,
-        config: options.config
-    });
-};
-
-BosClient.prototype.initiateMultipartUpload = function (bucketName, key, options) {
-    options = options || {};
-
-    var headers = {};
-    headers[H.CONTENT_TYPE] = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(key));
-    return this.sendRequest('POST', {
-        bucketName: bucketName,
-        key: key,
-        params: {uploads: ''},
-        headers: headers,
-        config: options.config
-    });
-};
-
-BosClient.prototype.abortMultipartUpload = function (bucketName, key, uploadId, options) {
-    options = options || {};
-
-    return this.sendRequest('DELETE', {
-        bucketName: bucketName,
-        key: key,
-        params: {uploadId: uploadId},
-        config: options.config
-    });
-};
-
-BosClient.prototype.completeMultipartUpload = function (bucketName, key, uploadId, partList, options) {
-    var headers = {};
-    headers[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
-    options = this._checkOptions(u.extend(headers, options));
-
-    return this.sendRequest('POST', {
-        bucketName: bucketName,
-        key: key,
-        body: JSON.stringify({parts: partList}),
-        headers: options.headers,
-        params: {uploadId: uploadId},
-        config: options.config
-    });
-};
-
-BosClient.prototype.uploadPartFromFile = function (bucketName, key, uploadId, partNumber,
-                                                   partSize, filename, offset, options) {
-
-    var start = offset;
-    var end = offset + partSize - 1;
-    var partFp = fs.createReadStream(filename, {
-        start: start,
-        end: end
-    });
-    return this.uploadPart(bucketName, key, uploadId, partNumber,
-        partSize, partFp, options);
-};
-
-BosClient.prototype.uploadPartFromBlob = function (bucketName, key, uploadId, partNumber,
-                                                   partSize, blob, options) {
-    if (blob.size !== partSize) {
-        throw new TypeError(util.format('Invalid partSize %d and data length %d',
-            partSize, blob.size));
-    }
-
-    var headers = {};
-    headers[H.CONTENT_LENGTH] = partSize;
-    headers[H.CONTENT_TYPE] = 'application/octet-stream';
-    // 对于浏览器调用API的时候，默认不添加 H.CONTENT_MD5 字段，因为计算起来比较慢
-    // headers[H.CONTENT_MD5] = require('./crypto').md5sum(data);
-
-    options = this._checkOptions(u.extend(headers, options));
-    return this.sendRequest('PUT', {
-        bucketName: bucketName,
-        key: key,
-        body: blob,
-        headers: options.headers,
-        params: {
-            partNumber: partNumber,
-            uploadId: uploadId
-        },
-        config: options.config
-    });
-};
-
-BosClient.prototype.uploadPartFromDataUrl = function (bucketName, key, uploadId, partNumber,
-                                                      partSize, dataUrl, options) {
-
-    var data = new Buffer(dataUrl, 'base64');
-    if (data.length !== partSize) {
-        throw new TypeError(util.format('Invalid partSize %d and data length %d',
-            partSize, data.length));
-    }
-
-    var headers = {};
-    headers[H.CONTENT_LENGTH] = partSize;
-    headers[H.CONTENT_TYPE] = 'application/octet-stream';
-    // 对于浏览器调用API的时候，默认不添加 H.CONTENT_MD5 字段，因为计算起来比较慢
-    // headers[H.CONTENT_MD5] = require('./crypto').md5sum(data);
-
-    options = this._checkOptions(u.extend(headers, options));
-    return this.sendRequest('PUT', {
-        bucketName: bucketName,
-        key: key,
-        body: data,
-        headers: options.headers,
-        params: {
-            partNumber: partNumber,
-            uploadId: uploadId
-        },
-        config: options.config
-    });
-};
-
-BosClient.prototype.uploadPart = function (bucketName, key, uploadId, partNumber,
-                                           partSize, partFp, options) {
-
-    /*eslint-disable*/
-    if (!bucketName) {
-        throw new TypeError('bucketName should not be empty');
-    }
-    if (!key) {
-        throw new TypeError('key should not be empty');
-    }
-    /*eslint-enable*/
-    if (partNumber < MIN_PART_NUMBER || partNumber > MAX_PART_NUMBER) {
-        throw new TypeError(util.format('Invalid partNumber %d. The valid range is from %d to %d.',
-            partNumber, MIN_PART_NUMBER, MAX_PART_NUMBER));
-    }
-
-    var client = this;
-
-    // TODO(leeight) 计算md5的时候已经把 partFp 读完了，如果从头再来呢？
-    var clonedPartFp = fs.createReadStream(partFp.path, {
-        start: partFp.start,
-        end: partFp.end
-    });
-
-    var headers = {};
-    headers[H.CONTENT_LENGTH] = partSize;
-    headers[H.CONTENT_TYPE] = 'application/octet-stream';
-    // headers[H.CONTENT_MD5] = partMd5;
-    options = u.extend(headers, options);
-
-    if (!options[H.CONTENT_MD5]) {
-        return crypto.md5stream(partFp)
-            .then(function (md5sum) {
-                options[H.CONTENT_MD5] = md5sum;
-                return newPromise();
-            });
-    }
-
-    function newPromise() {
-        options = client._checkOptions(options);
-        return client.sendRequest('PUT', {
-            bucketName: bucketName,
-            key: key,
-            body: clonedPartFp,
-            headers: options.headers,
-            params: {
-                partNumber: partNumber,
-                uploadId: uploadId
-            },
+    createBucket(bucketName, options = {}) {
+        return this.sendRequest('PUT', {
+            bucketName,
             config: options.config
         });
     }
 
-    return newPromise();
-};
+    listObjects(bucketName, options = {}) {
+        let params = u.extend(
+            {maxKeys: 1000},
+            u.pick(options, 'maxKeys', 'prefix', 'marker', 'delimiter')
+        );
 
-BosClient.prototype.listParts = function (bucketName, key, uploadId, options) {
-    /*eslint-disable*/
-    if (!uploadId) {
-        throw new TypeError('uploadId should not empty');
-    }
-    /*eslint-enable*/
-
-    var allowedParams = ['maxParts', 'partNumberMarker', 'uploadId'];
-    options = this._checkOptions(options || {}, allowedParams);
-    options.params.uploadId = uploadId;
-
-    return this.sendRequest('GET', {
-        bucketName: bucketName,
-        key: key,
-        params: options.params,
-        config: options.config
-    });
-};
-
-BosClient.prototype.listMultipartUploads = function (bucketName, options) {
-    var allowedParams = ['delimiter', 'maxUploads', 'keyMarker', 'prefix', 'uploads'];
-
-    options = this._checkOptions(options || {}, allowedParams);
-    options.params.uploads = '';
-
-    return this.sendRequest('GET', {
-        bucketName: bucketName,
-        params: options.params,
-        config: options.config
-    });
-};
-
-BosClient.prototype.appendObject = function (bucketName, key, data, offset, options) {
-    if (!key) {
-        throw new TypeError('key should not be empty.');
+        return this.sendRequest('GET', {
+            bucketName, params,
+            config: options.config
+        });
     }
 
-    options = this._checkOptions(options || {});
-    var params = {append: ''};
-    if (u.isNumber(offset)) {
-        params.offset = offset;
-    }
-    return this.sendRequest('POST', {
-        bucketName: bucketName,
-        key: key,
-        body: data,
-        headers: options.headers,
-        params: params,
-        config: options.config
-    });
-};
-
-BosClient.prototype.appendObjectFromBlob = function (bucketName, key, blob, offset, options) {
-    var headers = {};
-
-    // https://developer.mozilla.org/en-US/docs/Web/API/Blob/size
-    headers[H.CONTENT_LENGTH] = blob.size;
-    // 对于浏览器调用API的时候，默认不添加 H.CONTENT_MD5 字段，因为计算起来比较慢
-    // 而且根据 API 文档，这个字段不是必填的。
-    options = u.extend(headers, options);
-
-    return this.appendObject(bucketName, key, blob, offset, options);
-};
-
-BosClient.prototype.appendObjectFromDataUrl = function (bucketName, key, data, offset, options) {
-    data = new Buffer(data, 'base64');
-
-    var headers = {};
-    headers[H.CONTENT_LENGTH] = data.length;
-    // 对于浏览器调用API的时候，默认不添加 H.CONTENT_MD5 字段，因为计算起来比较慢
-    // headers[H.CONTENT_MD5] = require('./crypto').md5sum(data);
-    options = u.extend(headers, options);
-
-    return this.appendObject(bucketName, key, data, offset, options);
-};
-
-BosClient.prototype.appendObjectFromString = function (bucketName, key, data, offset, options) {
-    options = options || {};
-
-    var headers = {};
-    headers[H.CONTENT_LENGTH] = Buffer.byteLength(data);
-    headers[H.CONTENT_TYPE] = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(key));
-    headers[H.CONTENT_MD5] = crypto.md5sum(data);
-    options = u.extend(headers, options);
-
-    return this.appendObject(bucketName, key, data, offset, options);
-};
-
-BosClient.prototype.appendObjectFromFile = function (bucketName, key, filename, offset, size, options) {
-    options = options || {};
-    if (size === 0) {
-        return this.appendObjectFromString(bucketName, key, '', offset, options);
+    doesBucketExist(bucketName, options = {}) {
+        return this.sendRequest('HEAD', {
+            bucketName, config: options.config
+        }).then(
+            () => true,
+            e => {
+                if (e && e[H.X_STATUS_CODE] === 403) {
+                    return true;
+                }
+                if (e && e[H.X_STATUS_CODE] === 404) {
+                    return false;
+                }
+                throw e;
+            }
+        );
     }
 
-    var headers = {};
-
-    // append的起止位置应该在文件内
-    var fileSize = fs.statSync(filename).size;
-    if (size + offset > fileSize) {
-        throw new Error('Can\'t read the content beyond the end of file.');
+    deleteBucket(bucketName, options = {}) {
+        return this.sendRequest('DELETE', {
+            bucketName,
+            config: options.config
+        });
     }
 
-    headers[H.CONTENT_LENGTH] = size;
+    setBucketCannedAcl(bucketName, cannedAcl, options = {}) {
+        let headers = {
+            [H.X_BCE_ACL]: cannedAcl
+        };
+        return this.sendRequest('PUT', {
+            bucketName,
+            headers,
+            params: {acl: ''},
+            config: options.config
+        });
+    }
 
-    // 因为Firefox会在发起请求的时候自动给 Content-Type 添加 charset 属性
-    // 导致我们计算签名的时候使用的 Content-Type 值跟服务器收到的不一样，为了
-    // 解决这个问题，我们需要显式的声明Charset
-    headers[H.CONTENT_TYPE] = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(filename));
-    options = u.extend(headers, options);
+    setBucketAcl(bucketName, acl, options = {}) {
+        let headers = {
+            [H.CONTENT_TYPE]:  'application/json; charset=UTF-8'
+        };
+        return this.sendRequest('PUT', {
+            bucketName,
+            body: JSON.stringify({accessControlList: acl}),
+            headers,
+            params: {acl: ''},
+            config: options.config
+        });
+    }
 
-    var streamOptions = {
-        start: offset || 0,
-        end: (offset || 0) + size - 1
-    };
-    var fp = fs.createReadStream(filename, streamOptions);
-    if (!u.has(options, H.CONTENT_MD5)) {
-        var me = this;
-        var fp2 = fs.createReadStream(filename, streamOptions);
-        return crypto.md5stream(fp2)
-            .then(function (md5sum) {
-                options[H.CONTENT_MD5] = md5sum;
-                return me.appendObject(bucketName, key, fp, offset, options);
+    getBucketAcl(bucketName, options = {}) {
+        return this.sendRequest('GET', {
+            bucketName,
+            params: {acl: ''},
+            config: options.config
+        });
+    }
+
+    getBucketLocation(bucketName, options = {}) {
+        return this.sendRequest('GET', {
+            bucketName,
+            params: {location: ''},
+            config: options.config
+        });
+    }
+
+    deleteMultipleObjects(bucketName, objects, options = {}) {
+        let body = u.map(objects, key => {
+            return {key};
+        });
+
+        return this.sendRequest('POST', {
+            bucketName,
+            params: {'delete': ''},
+            body: JSON.stringify({
+                objects: body
+            }),
+            config: options.config
+        });
+    }
+
+    deleteObject(bucketName, key, options = {}) {
+        return this.sendRequest('DELETE', {
+            bucketName,
+            key,
+            config: options.config
+        });
+    }
+
+    putObject(bucketName, key, data, options = {}) {
+        if (!key) {
+            throw new TypeError('key should not be empty.');
+        }
+
+        let {headers, config} = this._checkOptions(options);
+        let body = data;
+
+        return this.sendRequest('PUT', {
+            bucketName, key, body,
+            headers, config
+        });
+    }
+
+    putObjectFromBlob(bucketName, key, blob, options) {
+        let headers = u.extend({
+            [H.CONTENT_LENGTH]: blob.size
+        }, options);
+
+        return this.putObject(bucketName, key, blob, headers);
+    }
+
+    putObjectFromDataUrl(bucketName, key, dataUrl, options) {
+        let body = new Buffer(dataUrl, 'base64');
+        let headers = u.extend({
+            [H.CONTENT_LENGTH]: body.length
+        }, options);
+
+        return this.putObject(bucketName, key, body, headers);
+    }
+
+    putObjectFromString(bucketName, key, data, options = {}) {
+        let contentType = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(key));
+        let headers = u.extend({
+            [H.CONTENT_LENGTH]: Buffer.byteLength(data),
+            [H.CONTENT_TYPE]: contentType,
+            [H.CONTENT_MD5]: crypto.md5sum(data)
+        }, options);
+
+        return this.putObject(bucketName, key, data, headers);
+    }
+
+    putObjectFromFile(bucketName, key, filename, options = {}) {
+        // 如果没有显式的设置，就使用默认值
+        let fileSize = fs.statSync(filename).size;
+        let contentLength = u.has(options, H.CONTENT_LENGTH)
+            ? options[H.CONTENT_LENGTH]
+            : fileSize;
+        if (contentLength > fileSize) {
+            throw new Error('options[\'Content-Length\'] should less than ' + fileSize);
+        }
+
+        let contentType = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(filename));
+
+        let headers = u.extend({
+            [H.CONTENT_LENGTH]: contentLength,
+            [H.CONTENT_TYPE]: contentType
+        }, options);
+
+        let streamOptions = {
+            start: 0,
+            end: Math.max(0, contentLength - 1)
+        };
+
+        let promise = u.has(headers, H.CONTENT_MD5)
+            ? headers[H.CONTENT_MD5]
+            : Q.fcall(() => {
+                let fp = fs.createReadStream(filename, streamOptions);
+                return crypto.md5stream(fp);
+            });
+
+        return Q.resolve(promise)
+            .then(md5sum => {
+                headers[H.CONTENT_MD5] = md5sum;
+
+                let fp = fs.createReadStream(filename, streamOptions);
+                return this.putObject(bucketName, key, fp, headers);
             });
     }
 
-    return this.appendObject(bucketName, key, fp, offset, options);
-};
-
-/**
- * Generate PostObject policy signature.
- *
- * @param {Object} policy The policy object.
- * @return {string}
- */
-BosClient.prototype.signPostObjectPolicy = function (policy) {
-    var credentials = this.config.credentials;
-    var auth = new Auth(credentials.ak, credentials.sk);
-
-    policy = new Buffer(JSON.stringify(policy)).toString('base64');
-    var signature = auth.hash(policy, credentials.sk);
-
-    return {
-        policy: policy,
-        signature: signature
-    };
-};
-
-/**
- * Post an object.
- *
- * @see {http://wiki.baidu.com/pages/viewpage.action?pageId=161461681}
- *
- * @param {string} bucketName The bucket name.
- * @param {string} key The object name.
- * @param {string|Buffer} data The file raw data or file path.
- * @param {Object} options The form fields.
- * @return {Promise}
- */
-BosClient.prototype.postObject = function (bucketName, key, data, options) {
-    var boundary = 'MM8964' + (Math.random() * Math.pow(2, 63)).toString(36);
-    var contentType = 'multipart/form-data; boundary=' + boundary;
-
-    if (u.isString(data)) {
-        data = fs.readFileSync(data);
-    }
-    else if (!Buffer.isBuffer(data)) {
-        throw new Error('Invalid data type.');
+    getObjectMetadata(bucketName, key, options = {}) {
+        return this.sendRequest('HEAD', {
+            bucketName,
+            key,
+            config: options.config
+        });
     }
 
-    var credentials = this.config.credentials;
-    var ak = credentials.ak;
+    getObject(bucketName, key, range, options = {}) {
+        let outputStream = new WMStream();
+        return this.sendRequest('GET', {
+            bucketName,
+            key,
+            headers: {
+                Range: range ? util.format('bytes=%s', range) : ''
+            },
+            config: options.config,
+            outputStream
+        }).then(response => {
+            response.body = outputStream.store;
+            return response;
+        });
+    }
 
-    var blacklist = ['signature', 'accessKey', 'key', 'file'];
-    options = u.omit(options || {}, blacklist);
+    getObjectToFile(bucketName, key, filename, range, options = {}) {
+        return this.sendRequest('GET', {
+            bucketName,
+            key,
+            headers: {
+                Range: range ? util.format('bytes=%s', range) : ''
+            },
+            config: options.config,
+            outputStream: fs.createWriteStream(filename)
+        });
+    }
 
-    var multipart = new Multipart(boundary);
-    for (var k in options) {
-        if (options.hasOwnProperty(k)) {
-            if (k !== 'policy') {
-                multipart.addPart(k, options[k]);
+    copyObject(sourceBucketName, sourceKey, targetBucketName, targetKey, options = {}) {
+        /*eslint-disable*/
+        if (!sourceBucketName) {
+            throw new TypeError('sourceBucketName should not be empty');
+        }
+        if (!sourceKey) {
+            throw new TypeError('sourceKey should not be empty');
+        }
+        if (!targetBucketName) {
+            throw new TypeError('targetBucketName should not be empty');
+        }
+        if (!targetKey) {
+            throw new TypeError('targetKey should not be empty');
+        }
+        /*eslint-enable*/
+
+        let {headers, config} = this._checkOptions(options);
+
+        let hasUserMetadata = false;
+        u.some(headers, (value, key) => {
+            if (key.indexOf('x-bce-meta-') === 0) {
+                hasUserMetadata = true;
+                return true;
+            }
+        });
+        headers['x-bce-copy-source'] = strings.normalize(util.format('/%s/%s',
+            sourceBucketName, sourceKey), false);
+        if (u.has(headers, 'ETag')) {
+            headers['x-bce-copy-source-if-match'] = headers.ETag;
+        }
+        headers['x-bce-metadata-directive'] = hasUserMetadata ? 'replace' : 'copy';
+
+        return this.sendRequest('PUT', {
+            bucketName: targetBucketName,
+            key: targetKey,
+            headers,
+            config
+        });
+    }
+
+    initiateMultipartUpload(bucketName, key, options = {}) {
+        let contentType = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(key));
+        let headers = {
+            [H.CONTENT_TYPE]: contentType
+        };
+        return this.sendRequest('POST', {
+            bucketName, key,
+            params: {uploads: ''},
+            headers,
+            config: options.config
+        });
+    }
+
+    abortMultipartUpload(bucketName, key, uploadId, options = {}) {
+        return this.sendRequest('DELETE', {
+            bucketName, key,
+            params: {uploadId},
+            config: options.config
+        });
+    }
+
+    completeMultipartUpload(bucketName, key, uploadId, partList, options = {}) {
+        let {headers, config} = this._checkOptions(u.extend({
+            [H.CONTENT_TYPE]: 'application/json; charset=UTF-8'
+        }, options));
+
+        return this.sendRequest('POST', {
+            bucketName, key,
+            body: JSON.stringify({parts: partList}),
+            params: {uploadId},
+            headers, config
+        });
+    }
+
+    uploadPartFromFile(bucketName, key, uploadId, partNumber, partSize, filename, offset, options = {}) {
+        let start = offset;
+        let end = offset + partSize - 1;
+        let partFp = fs.createReadStream(filename, {start, end});
+        return this.uploadPart(bucketName, key, uploadId, partNumber,
+            partSize, partFp, options);
+    }
+
+    uploadPartFromBlob(bucketName, key, uploadId, partNumber, partSize, blob, options = {}) {
+        if (blob.size !== partSize) {
+            throw new TypeError(util.format('Invalid partSize %d and data length %d',
+                partSize, blob.size));
+        }
+
+        let {headers, config} = this._checkOptions(u.extend({
+            [H.CONTENT_LENGTH]: partSize,
+            [H.CONTENT_TYPE]: 'application/octet-stream'
+        }, options));
+        return this.sendRequest('PUT', {
+            bucketName, key,
+            body: blob,
+            params: {partNumber, uploadId},
+            headers,
+            config
+        });
+    }
+
+    uploadPartFromDataUrl(bucketName, key, uploadId, partNumber, partSize, dataUrl, options = {}) {
+        let data = new Buffer(dataUrl, 'base64');
+        if (data.length !== partSize) {
+            throw new TypeError(util.format('Invalid partSize %d and data length %d',
+                partSize, data.length));
+        }
+
+        let {headers, config} = this._checkOptions(u.extend({
+            [H.CONTENT_LENGTH]: partSize,
+            [H.CONTENT_TYPE]: 'application/octet-stream'
+        }, options));
+
+        return this.sendRequest('PUT', {
+            bucketName, key,
+            body: data,
+            params: {partNumber, uploadId},
+            headers,
+            config
+        });
+    }
+
+    uploadPart(bucketName, key, uploadId, partNumber, partSize, partFp, options) {
+        if (!bucketName) {
+            throw new TypeError('bucketName should not be empty');
+        }
+        if (!key) {
+            throw new TypeError('key should not be empty');
+        }
+        if (partNumber < MIN_PART_NUMBER || partNumber > MAX_PART_NUMBER) {
+            throw new TypeError(util.format('Invalid partNumber %d. The valid range is from %d to %d.',
+                partNumber, MIN_PART_NUMBER, MAX_PART_NUMBER));
+        }
+
+        options = u.extend({
+            [H.CONTENT_LENGTH]: partSize,
+            [H.CONTENT_TYPE]: 'application/octet-stream'
+        }, options);
+
+        let promise = u.has(options, H.CONTENT_MD5)
+            ? options[H.CONTENT_MD5]
+            : crypto.md5stream(partFp);
+
+        return Q.resolve(promise)
+            .then(md5sum => {
+                options[H.CONTENT_MD5] = md5sum;
+
+                // TODO(leeight) 计算md5的时候已经把 partFp 读完了，如何从头再来呢？
+                let body = fs.createReadStream(partFp.path, {
+                    start: partFp.start,
+                    end: partFp.end
+                });
+                let {headers, config} = this._checkOptions(options);
+
+                return this.sendRequest('PUT', {
+                    bucketName, key, body,
+                    params: {partNumber, uploadId},
+                    headers, config
+                });
+            });
+    }
+
+    listParts(bucketName, key, uploadId, options = {}) {
+        if (!uploadId) {
+            throw new TypeError('uploadId should not empty');
+        }
+
+        let allowedParams = ['maxParts', 'partNumberMarker', 'uploadId'];
+        let {params, config} = this._checkOptions(options, allowedParams);
+        params.uploadId = uploadId;
+
+        return this.sendRequest('GET', {
+            bucketName, key,
+            params, config
+        });
+    }
+
+    listMultipartUploads(bucketName, options = {}) {
+        let allowedParams = ['delimiter', 'maxUploads', 'keyMarker', 'prefix', 'uploads'];
+
+        let {params, config} = this._checkOptions(options, allowedParams);
+        params.uploads = '';
+
+        return this.sendRequest('GET', {
+            bucketName, params, config
+        });
+    }
+
+    appendObject(bucketName, key, data, offset, options = {}) {
+        if (!key) {
+            throw new TypeError('key should not be empty.');
+        }
+
+        let {headers, config} = this._checkOptions(options);
+        let params = {append: ''};
+        if (u.isNumber(offset)) {
+            params.offset = offset;
+        }
+        return this.sendRequest('POST', {
+            bucketName, key,
+            body: data,
+            headers, params, config
+        });
+    }
+
+    appendObjectFromBlob(bucketName, key, blob, offset, options = {}) {
+        let defaultHeaders = {
+            [H.CONTENT_LENGTH]: blob.size
+        };
+        let headers = u.extend(defaultHeaders, options);
+
+        return this.appendObject(bucketName, key, blob, offset, headers);
+    }
+
+    appendObjectFromDataUrl(bucketName, key, dataUrl, offset, options) {
+        let body = new Buffer(dataUrl, 'base64');
+        let headers = u.extend({
+            [H.CONTENT_LENGTH]: body.length
+        }, options);
+
+        return this.appendObject(bucketName, key, body, offset, headers);
+    }
+
+    appendObjectFromString(bucketName, key, data, offset, options = {}) {
+        let contentType = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(key));
+        let headers = u.extend({
+            [H.CONTENT_LENGTH]: Buffer.byteLength(data),
+            [H.CONTENT_TYPE]: contentType,
+            [H.CONTENT_MD5]: crypto.md5sum(data)
+        }, options);
+
+        return this.appendObject(bucketName, key, data, offset, headers);
+    }
+
+    appendObjectFromFile(bucketName, key, filename, offset, size, options = {}) {
+        if (size === 0) {
+            return this.appendObjectFromString(bucketName, key, '', offset, options);
+        }
+
+        // append的起止位置应该在文件内
+        let fileSize = fs.statSync(filename).size;
+        if (size + offset > fileSize) {
+            throw new Error('Can\'t read the content beyond the end of file.');
+        }
+
+        let contentType = options[H.CONTENT_TYPE] || MimeType.guess(path.extname(filename));
+        let defaultHeaders = {
+            [H.CONTENT_LENGTH]: size,
+            [H.CONTENT_TYPE]: contentType
+        };
+        options = u.extend(defaultHeaders, options);
+
+        let streamOptions = {
+            start: offset || 0,
+            end: (offset || 0) + size - 1
+        };
+
+        let fp = fs.createReadStream(filename, streamOptions);
+        let promise = u.has(options, H.CONTENT_MD5)
+            ? options[H.CONTENT_MD5]
+            : crypto.md5stream(fp);
+
+        return Q.resolve(promise)
+            .then(md5sum => {
+                options[H.CONTENT_MD5] = md5sum;
+
+                let fp = fs.createReadStream(filename, streamOptions);
+                return this.appendObject(bucketName, key, fp, offset, options);
+            });
+    }
+
+    signPostObjectPolicy(policy) {
+        let credentials = this.config.credentials;
+        let auth = new Auth(credentials.ak, credentials.sk);
+
+        policy = new Buffer(JSON.stringify(policy)).toString('base64');
+        let signature = auth.hash(policy, credentials.sk);
+
+        return {policy, signature};
+    }
+
+    postObject(bucketName, key, data, options = {}) {
+        let boundary = 'MM8964' + (Math.random() * Math.pow(2, 63)).toString(36);
+        let contentType = 'multipart/form-data; boundary=' + boundary;
+
+        if (u.isString(data)) {
+            data = fs.readFileSync(data);
+        }
+        else if (!Buffer.isBuffer(data)) {
+            throw new Error('Invalid data type.');
+        }
+
+        let credentials = this.config.credentials;
+        let ak = credentials.ak;
+
+        let blacklist = ['signature', 'accessKey', 'key', 'file'];
+        options = u.omit(options, blacklist);
+
+        let multipart = new Multipart(boundary);
+        for (let k in options) {
+            if (options.hasOwnProperty(k)) {
+                if (k !== 'policy') {
+                    multipart.addPart(k, options[k]);
+                }
             }
         }
+
+        if (options.policy) {
+            let {policy, signature} = this.signPostObjectPolicy(options.policy);
+            multipart.addPart('policy', policy);
+            multipart.addPart('signature', signature);
+        }
+
+        multipart.addPart('accessKey', ak);
+        multipart.addPart('key', key);
+        multipart.addPart('file', data);
+
+        let body = multipart.encode();
+
+        let headers = {
+            [H.CONTENT_TYPE]: contentType
+        };
+
+        return this.sendRequest('POST', {bucketName, body, headers});
     }
 
-    if (options.policy) {
-        var rv = this.signPostObjectPolicy(options.policy);
-        multipart.addPart('policy', rv.policy);
-        multipart.addPart('signature', rv.signature);
+    // --- E N D ---
+
+    sendRequest(httpMethod, varArgs) {
+        let defaultArgs = {
+            bucketName: null,
+            key: null,
+            body: null,
+            headers: {},
+            params: {},
+            config: {},
+            outputStream: null
+        };
+        let args = u.extend(defaultArgs, varArgs);
+
+        let config = u.extend({}, this.config, args.config);
+        let resource = path.normalize(path.join(
+            '/v1',
+            strings.normalize(args.bucketName || ''),
+            strings.normalize(args.key || '', false)
+        )).replace(/\\/g, '/');
+
+        if (config.sessionToken) {
+            args.headers[H.SESSION_TOKEN] = config.sessionToken;
+        }
+
+        return this.sendHTTPRequest(httpMethod, resource, args, config);
     }
 
-    multipart.addPart('accessKey', ak);
-    multipart.addPart('key', key);
-    multipart.addPart('file', data);
+    sendHTTPRequest(httpMethod, resource, args, config) {
+        let agent = this._httpAgent = new HttpClient(config);
 
-    var body = multipart.encode();
-
-    var headers = {};
-    headers[H.CONTENT_TYPE] = contentType;
-
-    return this.sendRequest('POST', {
-        bucketName: bucketName,
-        body: body,
-        headers: headers
-    });
-};
-
-// --- E N D ---
-
-BosClient.prototype.sendRequest = function (httpMethod, varArgs) {
-    var defaultArgs = {
-        bucketName: null,
-        key: null,
-        body: null,
-        headers: {},
-        params: {},
-        config: {},
-        outputStream: null
-    };
-    var args = u.extend(defaultArgs, varArgs);
-
-    var config = u.extend({}, this.config, args.config);
-    var resource = path.normalize(path.join(
-        '/v1',
-        strings.normalize(args.bucketName || ''),
-        strings.normalize(args.key || '', false)
-    )).replace(/\\/g, '/');
-
-    if (config.sessionToken) {
-        args.headers[H.SESSION_TOKEN] = config.sessionToken;
-    }
-
-    return this.sendHTTPRequest(httpMethod, resource, args, config);
-};
-
-BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, config) {
-    var client = this;
-    var agent = this._httpAgent = new HttpClient(config);
-
-    var httpContext = {
-        httpMethod: httpMethod,
-        resource: resource,
-        args: args,
-        config: config
-    };
-    u.each(['progress', 'error', 'abort'], function (eventName) {
-        agent.on(eventName, function (evt) {
-            client.emit(eventName, evt, httpContext);
+        let httpContext = {httpMethod, resource, args, config};
+        u.each(['progress', 'error', 'abort'], eventName => {
+            agent.on(eventName, evt => this.emit(eventName, evt, httpContext));
         });
-    });
 
-    var promise = this._httpAgent.sendRequest(httpMethod, resource, args.body,
-        args.headers, args.params, u.bind(this.createSignature, this),
-        args.outputStream
-    );
+        let promise = this._httpAgent.sendRequest(httpMethod, resource, args.body,
+            args.headers, args.params, u.bind(this.createSignature, this),
+            args.outputStream
+        );
 
-    promise.abort = function () {
-        if (agent._req && agent._req.xhr) {
-            var xhr = agent._req.xhr;
-            xhr.abort();
-        }
-    };
+        promise.abort = () => {
+            if (agent._req && agent._req.xhr) {
+                let xhr = agent._req.xhr;
+                xhr.abort();
+            }
+        };
 
-    return promise;
-};
-
-BosClient.prototype._checkOptions = function (options, allowedParams) {
-    var rv = {};
-
-    rv.config = options.config || {};
-    rv.headers = this._prepareObjectHeaders(options);
-    rv.params = u.pick(options, allowedParams || []);
-
-    return rv;
-};
-
-BosClient.prototype._prepareObjectHeaders = function (options) {
-    var allowedHeaders = [
-        H.CONTENT_LENGTH,
-        H.CONTENT_ENCODING,
-        H.CONTENT_MD5,
-        H.X_BCE_CONTENT_SHA256,
-        H.CONTENT_TYPE,
-        H.CONTENT_DISPOSITION,
-        H.ETAG,
-        H.SESSION_TOKEN,
-        H.CACHE_CONTROL,
-        H.EXPIRES,
-        H.X_BCE_OBJECT_ACL,
-        H.X_BCE_OBJECT_GRANT_READ
-    ];
-    var metaSize = 0;
-    var headers = u.pick(options, function (value, key) {
-        if (allowedHeaders.indexOf(key) !== -1) {
-            return true;
-        }
-        else if (/^x\-bce\-meta\-/.test(key)) {
-            metaSize += Buffer.byteLength(key) + Buffer.byteLength('' + value);
-            return true;
-        }
-    });
-
-    if (metaSize > MAX_USER_METADATA_SIZE) {
-        throw new TypeError('Metadata size should not be greater than ' + MAX_USER_METADATA_SIZE + '.');
+        return promise;
     }
 
-    if (u.has(headers, H.CONTENT_LENGTH)) {
-        var contentLength = headers[H.CONTENT_LENGTH];
-        if (contentLength < 0) {
-            throw new TypeError('content_length should not be negative.');
-        }
-        else if (contentLength > MAX_PUT_OBJECT_LENGTH) { // 5G
-            throw new TypeError('Object length should be less than ' + MAX_PUT_OBJECT_LENGTH
-                + '. Use multi-part upload instead.');
-        }
+    _checkOptions(options, allowedParams = []) {
+        let config = options.config || {};
+        let headers = this._prepareObjectHeaders(options);
+        let params = u.pick(options, allowedParams);
+
+        return {config, headers, params};
     }
 
-    if (u.has(headers, 'ETag')) {
-        var etag = headers.ETag;
-        if (!/^"/.test(etag)) {
-            headers.ETag = util.format('"%s"', etag);
+    _prepareObjectHeaders(options) {
+        let allowedHeaders = [
+            H.CONTENT_LENGTH,
+            H.CONTENT_ENCODING,
+            H.CONTENT_MD5,
+            H.X_BCE_CONTENT_SHA256,
+            H.CONTENT_TYPE,
+            H.CONTENT_DISPOSITION,
+            H.ETAG,
+            H.SESSION_TOKEN,
+            H.CACHE_CONTROL,
+            H.EXPIRES,
+            H.X_BCE_OBJECT_ACL,
+            H.X_BCE_OBJECT_GRANT_READ
+        ];
+        let metaSize = 0;
+        let headers = u.pick(options, (value, key) => {
+            if (allowedHeaders.indexOf(key) !== -1) {
+                return true;
+            }
+            else if (/^x\-bce\-meta\-/.test(key)) {
+                metaSize += Buffer.byteLength(key) + Buffer.byteLength('' + value);
+                return true;
+            }
+        });
+
+        if (metaSize > MAX_USER_METADATA_SIZE) {
+            throw new TypeError('Metadata size should not be greater than ' + MAX_USER_METADATA_SIZE + '.');
         }
+
+        if (u.has(headers, H.CONTENT_LENGTH)) {
+            let contentLength = headers[H.CONTENT_LENGTH];
+            if (contentLength < 0) {
+                throw new TypeError('content_length should not be negative.');
+            }
+            else if (contentLength > MAX_PUT_OBJECT_LENGTH) { // 5G
+                throw new TypeError('Object length should be less than ' + MAX_PUT_OBJECT_LENGTH
+                    + '. Use multi-part upload instead.');
+            }
+        }
+
+        if (u.has(headers, 'ETag')) {
+            let etag = headers.ETag;
+            if (!/^"/.test(etag)) {
+                headers.ETag = util.format('"%s"', etag);
+            }
+        }
+
+        if (!u.has(headers, H.CONTENT_TYPE)) {
+            headers[H.CONTENT_TYPE] = 'application/octet-stream';
+        }
+
+        return headers;
     }
-
-    if (!u.has(headers, H.CONTENT_TYPE)) {
-        headers[H.CONTENT_TYPE] = 'application/octet-stream';
-    }
-
-    return headers;
-};
-
-module.exports = BosClient;
-
-/* vim: set ts=4 sw=4 sts=4 tw=120: */
+}

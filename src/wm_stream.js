@@ -16,37 +16,18 @@
 
 /* eslint-env node */
 
-var stream = require('stream');
-var util = require('util');
+import {Writable} from 'stream';
 
-/**
- * Writable memory stream, which can be
- * used a http_client output stream.
- *
- * @constructor
- */
-function WMStream() {
-    stream.Writable.call(this);
+export default class WMStream extends Writable {
+    constructor() {
+        super();
+        this.store = new Buffer('');
+    }
 
-    this.store = new Buffer('');
+    _write(chunk, enc, cb) {
+        let buffer = Buffer.isBuffer(chunk) ? chunk : new Buffer(chunk, enc);
+        this.store = Buffer.concat([this.store, buffer]);
+
+        cb();
+    }
 }
-util.inherits(WMStream, stream.Writable);
-
-WMStream.prototype._write = function (chunk, enc, cb) {
-    var buffer = Buffer.isBuffer(chunk) ? chunk : new Buffer(chunk, enc);
-    this.store = Buffer.concat([this.store, buffer]);
-
-    cb();
-};
-
-module.exports = WMStream;
-
-
-
-
-
-
-
-
-
-/* vim: set ts=4 sw=4 sts=4 tw=120: */
