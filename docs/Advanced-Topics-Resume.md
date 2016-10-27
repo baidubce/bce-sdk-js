@@ -161,7 +161,7 @@ function uploadPartFile(state, bosClient) {
         else {
             // 否则进行上传
             var blob = task.file.slice(task.start, task.stop + 1);
-            bosClient.uploadPartFromBlob(task.bucketName, task.object, task.uploadId, task.partNumber, task.partSize, blob)
+            bosClient.uploadPartFromBlob(task.bucket, task.object, task.uploadId, task.partNumber, task.partSize, blob)
                 .then(function (res) {
                     ++state.loaded;
                     callback(null, res);
