@@ -366,7 +366,17 @@ HttpClient.prototype._sendRequest = function (req, data) {
 };
 
 HttpClient.prototype.buildQueryString = function (params) {
-    return require('querystring').stringify(params);
+    var urlEncodeStr = require('querystring').stringify(params);
+    // 编码一些`encodeURIComponent`不处理的字符
+    return urlEncodeStr.replace(/\(|\)|\.|\!|\~|\*|\'|\-|\_|\)/g, function (char) {
+        switch(char) {
+            case '.': return '%2E';
+            case '*': return '%2A';
+            case '_': return '%5F';
+            case '-': return '%2D';
+            default: return escape(char)
+        }
+    });
 };
 
 HttpClient.prototype._getRequestUrl = function (path, params) {
