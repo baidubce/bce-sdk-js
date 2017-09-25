@@ -101,6 +101,13 @@ module.exports = {
             'ak': process.env.STS_AK,
             'sk': process.env.STS_SK
         }
+    },
+    'tsdb': {
+        'endpoint': process.env.STS_ENDPOINT,
+        'credentials': {
+            'ak': process.env.TSDB_AK,
+            'sk': process.env.TSDB_SK  
+        }
     }
 };
 
