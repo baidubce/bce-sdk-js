@@ -115,6 +115,13 @@ module.exports = {
             'ak': process.env.TSDB_AK,
             'sk': process.env.TSDB_AK
         }
+    },
+    'cfc': {
+        'endpoint': "http://cfc.bj.baidubce.com",
+        'credentials': {
+            'ak': process.env.CFC_AK,
+            'sk': process.env.CFC_SK
+        }
     }
 };
 
