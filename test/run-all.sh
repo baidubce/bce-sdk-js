@@ -73,6 +73,7 @@ SPECS=(
   test/sdk/vod_client_media.spec.js
   test/sdk/tsdb_data_client.spec.js
   test/sdk/tsdb_admin_client.spec.js
+  test/sdk/cfc_client.spec.js
 )
 
 # SPECS=(
