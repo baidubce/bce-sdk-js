@@ -37,7 +37,6 @@ var client = new CfcClient(config);
 参数名称 | 类型 | 是否必需 | 参数位置 | 描述
 --- | --- | --- | --- | ---
 FunctionName |String |是| path参数 |函数名
-logToBody | Boolean | 否 | Query参数 | true把日志打印到返回
 invocationType | String | 是 | Query参数 | Event(无返回)/RequestResponse(同步返回)/DryRun(测试函数)
 logType | String | 否 | Query参数 | 日志类型 Tail / None
 Qualifier | String | 否 | Query参数 | 默认为$LATEST 可选别名和版本
@@ -64,7 +63,6 @@ var invoke_body = 	{
                   		"key1": "value1"
                   	};
 var invoke_options = {
-                         "logToBody": "false",
                          "invocationType": "RequestResponse",
                          "logType": "None",
                          "Qualifier": "$LATEST"
@@ -96,7 +94,6 @@ Environment | [Environment](#Environment) |否| RequestBody参数 |环境变量
 FunctionName |String |是| RequestBody参数 |函数名 1-140字符
 Handler |String |是| RequestBody参数 | cfc调用的入口函数，对于node为module-name.export eg. index.handler
 MemorySize|int|否| RequestBody参数 | 内存大小 现在为128固定 |
-Region |String |否| RequestBody参数 | 地址 bj|
 Runtime |String |是| RequestBody参数 |运行语言 python2 nodejs6.11
 Timeout |int |是| RequestBody参数 |超时时间 1-300 最大300
 
@@ -109,7 +106,6 @@ Timeout |int |是| RequestBody参数 |超时时间 1-300 最大300
             "Publish": false,
         },
         "Description": "bce_sdk_test",
-        "Region": "bj",
         "Timeout": 3,
         "FunctionName": "bce_sdk_test",
         "Handler": "index.handler",
