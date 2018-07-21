@@ -29,6 +29,7 @@ var Q = require('q');
 var debug = require('debug')('bce-sdk:HttpClient');
 
 var H = require('./headers');
+var Auth = require('./auth');
 
 /**
  * The HttpClient
@@ -69,7 +70,7 @@ util.inherits(HttpClient, EventEmitter);
  */
 HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, params,
                                              signFunction, outputStream) {
-
+    httpMethod = httpMethod.toUpperCase();
     var requestUrl = this._getRequestUrl(path, params);
     var options = require('url').parse(requestUrl);
     debug('httpMethod = %s, requestUrl = %s, options = %j',
@@ -132,15 +133,23 @@ HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, pa
         }
         else if (typeof promise === 'string') {
             headers[H.AUTHORIZATION] = promise;
-            debug('options = %j', options);
         }
         else {
             throw new Error('Invalid signature = (' + promise + ')');
         }
     }
+    else {
+        headers[H.AUTHORIZATION] = createSignature(this.config.credentials, httpMethod, path, params, headers);
+    }
 
+    debug('options = %j', options);
     return client._doRequest(options, body, outputStream);
 };
+
+function createSignature(credentials, httpMethod, path, params, headers) {
+    var auth = new Auth(credentials.ak, credentials.sk);
+    return auth.generateAuthorization(httpMethod, path, params, headers);
+}
 
 function isPromise(obj) {
     return obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
@@ -292,6 +301,7 @@ HttpClient.prototype._recvResponse = function (res) {
         var responseBody = null;
 
         try {
+            debug('responseHeaders = %j', responseHeaders);
             responseBody = parseHttpResponseBody(raw);
         }
         catch (e) {

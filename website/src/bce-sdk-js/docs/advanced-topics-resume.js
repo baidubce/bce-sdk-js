@@ -67,7 +67,7 @@ var initiateMultipartUpload = function (file, chunkSize, bucket, object) {
     if (uploadId) {
         // \`uploadId\`存在，说明有未完成的分块上传。
         // 那么调用\`listParts()\`获取已上传分块信息。
-        return BosClient.listParts(bucket, object, uploadId)
+        return bosClient.listParts(bucket, object, uploadId)
             .then(function (response) {
                 // response.body.parts里包含了已上传分块的信息
                 response.body.uploadId = uploadId;
@@ -76,7 +76,7 @@ var initiateMultipartUpload = function (file, chunkSize, bucket, object) {
     }
     else {
         // \`uploadId\`不存在，那么用正常的流程初始化
-        return BosClient.initiateMultipartUpload(bucket, object)
+        return bosClient.initiateMultipartUpload(bucket, object)
             .then(function (response) {
                 // response.body.uploadId为新生成的\`uploadId\`
                 response.body.parts = [];
@@ -158,7 +158,7 @@ function uploadPartFile(state, bosClient) {
         else {
             // 否则进行上传
             var blob = task.file.slice(task.start, task.stop + 1);
-            bosClient.uploadPartFromBlob(task.bucketName, task.key, task.uploadId, task.partNumber, task.partSize, blob)
+            bosClient.uploadPartFromBlob(task.bucket, task.object, task.uploadId, task.partNumber, task.partSize, blob)
                 .then(function (res) {
                     ++state.loaded;
                     callback(null, res);
@@ -184,7 +184,7 @@ initiateMultipartUpload(file, chunkSize, bucket, object)
         var parts = response.body.parts || []; // 已上传的分块列表。如果是新上传，则为空数组
 
         var deferred = sdk.Q.defer();
-        var tasks = getTasks(blob, uploadId, chunkSize, bucket, key, parts);
+        var tasks = getTasks(blob, uploadId, chunkSize, bucket, object, parts);
         var state = {
             lengthComputable: true,
             loaded: parts.length, // 已上传的分块数
@@ -218,7 +218,7 @@ initiateMultipartUpload(file, chunkSize, bucket, object)
         // 所有分块上传完成后，可以删除对应的\`uploadId\`了
         removeUploadId(key, uploadId);
 
-        return bosClient.completeMultipartUpload(bucket, key, uploadId, partList); // 完成上传
+        return bosClient.completeMultipartUpload(bucket, object, uploadId, partList); // 完成上传
     })
     .then(function (res) {
         // 上传完成

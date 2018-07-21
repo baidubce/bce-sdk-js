@@ -85,6 +85,13 @@ module.exports = {
       "permalink": "docs/api-reference-bos.html"
     },
     {
+      "id": "api-reference-Cfc",
+      "title": "CFC - api",
+      "layout": "docs",
+      "category": "API Reference",
+      "permalink": "docs/api-reference-cfc.html"
+    },
+    {
       "id": "api-reference-vod",
       "title": "VOD - api",
       "layout": "docs",

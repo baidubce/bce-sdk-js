@@ -225,12 +225,12 @@ Object以文件的形式上传到BOS中，以上简单上传的函数支持不�
 sdk本质上是调用后台的HTTP接口，因此BOS服务允许用户自定义Http Header。同时也允许用户对要上传的Object添加自定义meta信息。以`putObjectFromFile()`函数为例，可以用以下代码来处理：
 ```js
 var options = {
-    content-length: <file.size>, // 添加http header
-    content-type: 'application/json', // 添加http header
+    'Content-Length': <file.size>, // 添加http header
+    'Content-Type': 'application/json', // 添加http header
 
-    x-bce-meta-foo1: 'bar1', // 添加自定义meta信息
-    x-bce-meta-foo2: 'bar2', // 添加自定义meta信息
-    x-bce-meta-foo3: 'bar3' // 添加自定义meta信息
+    'x-bce-meta-foo1': 'bar1', // 添加自定义meta信息
+    'x-bce-meta-foo2': 'bar2', // 添加自定义meta信息
+    'x-bce-meta-foo3': 'bar3' // 添加自定义meta信息
 }
 client.putObjectFromFile(bucket, object, <path-to-file>, options)
     .then(done)

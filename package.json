@@ -1,6 +1,6 @@
 {
-  "name": "bce-sdk-js",
-  "version": "0.2.9",
+  "name": "@baiducloud/sdk",
+  "version": "0.3.0",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "index.js",
   "directories": {
@@ -15,19 +15,22 @@
     "type": "git",
     "url": "https://github.com/baidubce/bce-sdk-js.git"
   },
-  "author": "leeight@gmail.com",
+  "authors": [
+    "leeight <leeight@gmail.com>",
+    "木休大人 <523317421@qq.com>"
+  ],
   "license": "MIT",
   "dependencies": {
-    "async": "^1.5.2",
-    "debug": "^2.2.0",
-    "q": "^1.1.2",
-    "underscore": "^1.7.0"
+    "async": "^2.6.1",
+    "debug": "^3.1.0",
+    "q": "^1.5.1",
+    "underscore": "^1.9.1"
   },
   "devDependencies": {
-    "browserify": "10.2.6",
-    "coveralls": "^2.11.8",
+    "browserify": "^16.2.2",
+    "coveralls": "^3.0.2",
     "expect.js": "^0.3.1",
-    "istanbul": "^0.4.2",
-    "mocha": "^2.4.5"
+    "istanbul": "^0.4.5",
+    "mocha": "^5.2.0"
   }
 }

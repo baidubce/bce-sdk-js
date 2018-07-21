@@ -11,11 +11,19 @@
  * specific language governing permissions and limitations under the License.
  *
  * @file index.js
- * @author leeight
+ * @author leeight,mudio
  */
 
 exports.Q = require('q');
+
+exports.version = require('./package.json').version;
+exports.STS = require('./src/sts');
 exports.Auth = require('./src/auth');
+exports.MimeType = require('./src/mime.types');
+
+exports.HttpClient = require('./src/http_client');
+exports.BceBaseClient  = require('./src/bce_base_client');
+
 exports.BosClient = require('./src/bos_client');
 exports.BcsClient = require('./src/bcs_client');
 exports.BccClient = require('./src/bcc_client');
@@ -26,9 +34,6 @@ exports.MctClient = require('./src/mct_client');
 exports.FaceClient = require('./src/face_client');
 exports.OCRClient = require('./src/ocr_client');
 exports.MediaClient = require('./src/media_client');
-exports.HttpClient = require('./src/http_client');
-exports.MimeType = require('./src/mime.types');
-exports.STS = require('./src/sts');
 exports.VodClient = require('./src/vod_client');
 exports.DocClient = require('./src/doc_client');
 exports.TsdbDataClient = require('./src/tsdb_data_client');
