@@ -19,6 +19,7 @@
 /* eslint fecs-camelcase:[2,{"ignore":["/opt_/"]}] */
 
 var util = require('util');
+var strings = require('./strings');
 
 var u = require('underscore');
 var debug = require('debug')('bce-sdk:CfcClient');
@@ -40,49 +41,6 @@ function CfcClient(config) {
 }
 
 util.inherits(CfcClient, BceBaseClient);
-
-// BRN BEGIN
-var exp1 = /^([a-zA-Z0-9-_\.]+)$/;
-var exp2 = /^(brn:(.*))$/;
-var exp3 = /^([a-zA-Z0-9]+:[a-zA-Z0-9-_\.]+)$/;
-
-function dealFunctionName(fname) {
-    var data = {
-        thumbnailName: fname,
-        version: '',
-        uid: ''
-    };
-    if (exp1.test(fname)) {
-        data.thumbnailName = fname;
-        return data;
-    }
-    else if (exp2.test(fname)) {
-        var brn = fname.split(':');
-        if (brn.length < 6) {
-            return data;
-        }
-        data.uid = brn[4];
-        if (brn.length === 7) {
-            data.thumbnailName = brn[6];
-        }
-        else if (brn.length === 8) {
-            data.thumbnailName = brn[6];
-            data.version = brn[7];
-        }
-        return data;
-    }
-    else if (exp3.test(fname)) {
-        var resource = fname.split(':');
-        if (resource.length === 2) {
-            data.thumbnailName = resource[1];
-            data.uid = resource[0];
-        }
-        return data;
-    }
-    return data;
-}
-
-// BRN END
 
 // --- BEGIN ---
 
@@ -108,7 +66,6 @@ CfcClient.prototype.createFunction = function (body) {
          'DryRun': true
        },
        'Description': 'string',
-       'Region': 'string',
        'Timeout': 0,
        'FunctionName': 'string',
        'Handler': 'string',
@@ -136,19 +93,25 @@ CfcClient.prototype.getFunction = function (functionName, opt_options) {
     var params = u.extend(
         u.pick(options, 'Qualifier')
     );
-    return this.sendRequest('GET', '/v1/functions/' + functionName, {
+    return this.sendRequest('GET', '/v1/functions/' +  strings.normalize(functionName), {
         params: params
     });
 };
 
-CfcClient.prototype.deleteFunction = function (functionName) {
-    return this.sendRequest('DELETE', '/v1/functions/' + functionName, {});
+CfcClient.prototype.deleteFunction = function (functionName, opt_options) {
+    var options = opt_options || {};
+    var params = u.extend(
+        u.pick(options, 'Qualifier')
+    );
+    return this.sendRequest('DELETE', '/v1/functions/' + functionName, {
+        params: params
+    });
 };
 
 CfcClient.prototype.invocations = function (functionName, body, opt_options) {
     var options = opt_options || {};
     var params = u.extend(
-        u.pick(options, 'Qualifier', 'logToBody', 'invocationType', 'logType')
+        u.pick(options, 'Qualifier', 'invocationType', 'logType')
     );
     /**
      var body =  {
@@ -157,8 +120,7 @@ CfcClient.prototype.invocations = function (functionName, body, opt_options) {
         'key1': 'value1'
     }
      */
-    var data = dealFunctionName(functionName);
-    return this.sendRequest('POST', '/v1/functions/' + data.thumbnailName + '/invocations', {
+    return this.sendRequest('POST', '/v1/functions/' + strings.normalize(functionName) + '/invocations', {
         params: params,
         body: JSON.stringify(body)
     });
@@ -214,8 +176,7 @@ CfcClient.prototype.listVersionsByFunction = function (functionName, opt_options
     var params = u.extend(
         u.pick(options, 'Marker', 'MaxItems')
     );
-    var data = dealFunctionName(functionName);
-    return this.sendRequest('GET', '/v1/functions/' + data.thumbnailName + '/versions', {
+    return this.sendRequest('GET', '/v1/functions/' + functionName + '/versions', {
         params: params
     });
 };
@@ -224,8 +185,7 @@ CfcClient.prototype.publishVersion = function (functionName, description) {
     if (description != null) {
         body.Description = description;
     }
-    var data = dealFunctionName(functionName);
-    return this.sendRequest('POST', '/v1/functions/' + data.thumbnailName + '/versions', {
+    return this.sendRequest('POST', '/v1/functions/' + functionName + '/versions', {
         body: JSON.stringify(body)
     });
 };

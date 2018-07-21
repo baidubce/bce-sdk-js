@@ -29,10 +29,10 @@ describe('CfcClient', function () {
     });
     var body = {
         Code: {
-            ZipFile: 'UEsDBBQACAAIAAAAAAAAAAAAAAAAAAAAAAAIAAAAaW5kZXguanNKrSjILyop1stIzEvJSS1SsFXQSC1LzSvRUUjO'
-                     + 'zytJrQAxEnNykhKTszUVbO0UqrkUFBTgQhp5pTk5OgpgHdFKiUqxmtZctdaAAAAA//9QSwcI9fw51k4AAABUAAAA'
-                     + 'UEsBAhQAFAAIAAgAAAAAAPX8OdZOAAAAVAAAAAgAAAAAAAAAAAAAAAAAAAAAAGluZGV4LmpzUEsFBgAAAAABAAEAN'
-                     + 'gAAAIQAAAAAAA==',
+            ZipFile: 'UEsDBBQACAAIAAAAAAAAAAAAAAAAAAAAAAAIAAAAaW5kZXguanNKrSjILyop1stIzEv' +
+            'JSS1SsFXQSC1LzSvRUUjOzytJrQAxEnNykhKTszUVbO0UqrkUFBTgQhp5pTk5OgpgHdFKiUqxmtZc' +
+            'tdaAAAAA//9QSwcI9fw51k4AAABUAAAAUEsBAhQAFAAIAAgAAAAAAPX8OdZOAAAAVAAAAAgAAAAAA' +
+            'AAAAAAAAAAAAAAAAGluZGV4LmpzUEsFBgAAAAABAAEANgAAAIQAAAAAAA==',
             Publish: false,
             DryRun: true
         },
@@ -58,10 +58,9 @@ describe('CfcClient', function () {
         a: 'hello'
     };
     var invokeOptions = {
-        logToBody: 'false',
         invocationType: 'RequestResponse',
-        logType: 'Tail',
-        Qualifier: '$LATEST'
+        logType: 'Tail'
+        // Qualifier: '$LATEST'
     };
     var brn;
     debug('name ', 'bce_sdk_test' + Date.now());
@@ -70,13 +69,14 @@ describe('CfcClient', function () {
             .then(function (response) {
                 debug('createFunction response (%j)', response.body);
                 brn = response.body.FunctionBrn;
-                return client.getFunction(response.body.FunctionName);
+                return client.getFunction(brn);
             }).then(function (response) {
-                debug('createFunction response (%j)', response.body);
-                return client.invocations(body.FunctionName, invokeBody, invokeOptions);
+                debug('getFunction response (%j)', response.body);
+                return client.invocations(response.body.Configuration.FunctionBrn, invokeBody, invokeOptions);
             }).then(function (response) {
-                debug('invocations response (%s)', response.body);
-                invokeOptions.logToBody = 'false';
+                debug('invocations response (%s) ', response.body);
+                console.log(response);
+                debug('invocations response header (%s)', Buffer.from(response.http_headers['x-bce-log-result'], 'base64').toString());
                 invokeOptions.logType = 'None';
                 return client.invocations(body.FunctionName, invokeBody, invokeOptions);
             }).then(function (response) {
@@ -98,7 +98,7 @@ describe('CfcClient', function () {
                 return client.listVersionsByFunction(response.body.FunctionName, {Marker: 0, MaxItems: 10});
             }).then(function (response) {
                 debug('listVersionsByFunction response (%j)', response.body);
-                return client.publishVersion(brn, 'publish version');
+                return client.publishVersion(body.FunctionName, 'publish version');
             }).then(function (response) {
                 debug('publishVersion response (%j)', response.body);
                 return client.invocations(brn, invokeBody, invokeOptions);
