@@ -93,7 +93,6 @@ CfcClient.prototype.getFunction = function (functionName, opt_options) {
     var params = u.extend(
         u.pick(options, 'Qualifier')
     );
-    console.log("strings.normalize(functionName) ",strings.normalize(functionName))
     return this.sendRequest('GET', '/v1/functions/' +  strings.normalize(functionName), {
         params: params
     });

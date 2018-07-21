@@ -29,10 +29,10 @@ describe('CfcClient', function () {
     });
     var body = {
         Code: {
-            ZipFile: 'UEsDBBQACAAIAAAAAAAAAAAAAAAAAAAAAAAIAAAAaW5kZXguanNKrSjILyop1stIzEvJSS1SsFXQSC1LzSvRUUjO'
-            + 'zytJrQAxEnNykhKTszUVbO0UqrkUFBTgQhp5pTk5OgpgHdFKiUqxmtZctdaAAAAA//9QSwcI9fw51k4AAABUAAAA'
-            + 'UEsBAhQAFAAIAAgAAAAAAPX8OdZOAAAAVAAAAAgAAAAAAAAAAAAAAAAAAAAAAGluZGV4LmpzUEsFBgAAAAABAAEAN'
-            + 'gAAAIQAAAAAAA==',
+            ZipFile: 'UEsDBBQACAAIAAAAAAAAAAAAAAAAAAAAAAAIAAAAaW5kZXguanNKrSjILyop1stIzEv' +
+            'JSS1SsFXQSC1LzSvRUUjOzytJrQAxEnNykhKTszUVbO0UqrkUFBTgQhp5pTk5OgpgHdFKiUqxmtZc' +
+            'tdaAAAAA//9QSwcI9fw51k4AAABUAAAAUEsBAhQAFAAIAAgAAAAAAPX8OdZOAAAAVAAAAAgAAAAAA' +
+            'AAAAAAAAAAAAAAAAGluZGV4LmpzUEsFBgAAAAABAAEANgAAAIQAAAAAAA==',
             Publish: false,
             DryRun: true
         },
@@ -62,17 +62,6 @@ describe('CfcClient', function () {
         logType: 'Tail'
         // Qualifier: '$LATEST'
     };
-    // it('delete all function', function () {
-    //     return client.listFunctions()
-    //         .then(function (response) {
-    //             debug('listFunctions response (%j)', response.body);
-    //             for (k in response.body.Functions){
-    //
-    //                 client.deleteFunction(response.body.Functions[k].FunctionName)
-    //             }
-    //         })
-    // });
-
     var brn;
     debug('name ', 'bce_sdk_test' + Date.now());
     it('createFunction', function () {
