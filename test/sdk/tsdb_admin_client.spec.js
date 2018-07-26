@@ -49,51 +49,55 @@ describe('TsdbAdminClient', function () {
 
     it('ok', function () {});
 
-    it('createDatabase & listDatabase & getDatabaseInfo', function () { 
+    it('createDatabase', function () { 
         ingestDataPointsMonthly = 1;
         purchaseLength = 1;
         description = 'This is a test for TSDB.';
 
         return clientAdmin.createDatabase(clientToken, databaseName,
-            ingestDataPointsMonthly, purchaseLength, description)
-            .then(function () {
-                return clientAdmin.listDatabase();
-            })
-            .then(function (response) {
-                debug('%j', response);
-                var length = response.body.databases.length;
-                console.log(length);
-                expect(response.body.databases[length - 1].databaseName).to.eql(databaseName);
-                var databaseId = response.body.databases[length - 1].databaseId;
-                return clientAdmin.getDatabaseInfo(databaseId);
-            })
-            .then(function (response) {
-                debug('%j', response);
-                expect(response.body.databaseName).to.eql(databaseName);
-                expect(response.body.description).to.eql(description);
-            });
+                ingestDataPointsMonthly, purchaseLength, description, '', 1)
+        .then(function (response) {
+            debug('%j', response);
+            expect(response.body.databaseId).not.to.be(undefined);
+            expect(response.body.charge).not.to.be(undefined);
+            expect(response.body.expiredTime).not.to.be(undefined);
+            expect(response.body.orderId).not.to.be(undefined);
+        });
+    });
+
+    it('listDatabase & getDatabaseInfo', function () {
+        return clientAdmin.listDatabase()
+        .then(function (response) {
+            debug('%j', response);
+            var databaseId = response.body.databases[0].databaseId;
+            return clientAdmin.getDatabaseInfo(databaseId);
+        })
+        .then(function (response) {
+            debug('%j', response);
+            expect(response.body.databaseId).not.to.be(undefined);
+            expect(response.body.databaseName).not.to.be(undefined);
+            expect(response.body.description).not.to.be(undefined);
+            expect(response.body.endpoint).not.to.be(undefined);
+            expect(response.body.quota.ingestDataPointsMonthly).not.to.be(undefined);
+            expect(response.body.quota.storeBytesQuota).not.to.be(undefined);
+            expect(response.body.status).not.to.be(undefined);
+            expect(response.body.autoExport).not.to.be(undefined);
+            expect(response.body.createTime).not.to.be(undefined);
+            expect(response.body.expiredTime).not.to.be(undefined);
+        });
     });
 
     it('deleteDatabase', function () {
-        ingestDataPointsMonthly = 1;
-        purchaseLength = 1;
-        description = 'This is a test for TSDB.';
-
-        return clientAdmin.createDatabase(clientToken, databaseName,
-            ingestDataPointsMonthly, purchaseLength, description)
-            .then(function (response) {
-                var databaseId = response.body.databaseId;
-                console.log(databaseId);
-                return clientAdmin.deleteDatabase(databaseId);
-            })
-           // 不能删除未到期数据库
+        databaseId='dddddd';
+        return clientAdmin.deleteDatabase(databaseId)
         .catch(function (error) {
             if (error.code === 'DeleteUnexpiredDatabaseFailed') {
                 expect(error.status_code).to.eql(400);
                 expect(error.message).to.eql('Can not delete unexpired database');
-                expect(error.code).to.eql('DeleteUnexpiredDatabaseFailed');
-            }
-            else {
+            } else if (error.code === 'ResourceNotFound') {
+                expect(error.status_code).to.eql(400);
+                expect(error.message).to.eql('Database not found');
+            } else {
                 fail(error);
             }
         });
