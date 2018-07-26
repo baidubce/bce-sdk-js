@@ -29,16 +29,12 @@ var TsdbAdminClient = require('../../src/tsdb_admin_client');
 
 describe('TsdbDataClient', function () {
     var clientData;
-    var fail;
-    var clientAdmin;
     var databaseName;
     var metricName;
-    var clientToken;
-    var purchaseLength;
-    var description;
     var datapoints;
-    var ingestDataPointsMonthly;
     var queryList;
+    var sql;
+    var options;
 
     this.timeout(10 * 60 * 1000);
 
@@ -56,6 +52,10 @@ describe('TsdbDataClient', function () {
         ingestDataPointsMonthly = 1;
         purchaseLength = 1;
         description = 'This is a test for TSDB.';
+        options = {
+            headers: {'User-Agent': 'TSDB-node-test'}
+        };
+        metricName='cpu_idle';
         datapoints = [{
                 "metric": "cpu_idle",
                 "field": "value",
@@ -100,8 +100,8 @@ describe('TsdbDataClient', function () {
                     "sampling": "10 minutes"
                 }]
             }];
+        sql = 'select * from cpu_idle';
         clientData = new TsdbDataClient(config.tsdbData);
-        clientAdmin = new TsdbAdminClient(config.tsdbAdmin);
     });
 
     afterEach(function () {
@@ -110,77 +110,83 @@ describe('TsdbDataClient', function () {
 
     it('ok', function () {});
 
-    it('writeDatapoints & getMetrics & getTags & getFields & getDatapoints & generatePresignedUrl',
-        function () {
-            expect(clientToken).not.to.be(undefined);
-            expect(databaseName).not.to.be(undefined);
-            expect(ingestDataPointsMonthly).not.to.be(undefined);
-            expect(purchaseLength).not.to.be(undefined);
-            expect(description).not.to.be(undefined);
-            expect(datapoints).not.to.be(undefined);
+    it('writeDatapoints', function () {
+        expect(datapoints).not.to.be(undefined);
+        return clientData.writeDatapoints(datapoints, true, options)
+        .then(function (response) {
 
-            return clientAdmin.createDatabase(clientToken, databaseName, ingestDataPointsMonthly,
-                purchaseLength, description)
-            .then(function () {
+        });
+    });
+    it('writeDatapointsWithoutGzip', function () {
+        expect(datapoints).not.to.be(undefined);
+        return clientData.writeDatapoints(datapoints, false, options)
+        .then(function (response) {
 
-                return clientData.writeDatapoints(datapoints);
-            })
-            .then(function (response) {
-
-                return delay(4000).then(function () {
-
-                    return clientData.getMetrics();
-                });
-            })
-            .then(function (response) {
-                debug('%j', response);
-                var metrics = response.body.metrics;
-                expect(metrics).not.to.be(undefined);
-                expect(metrics[0]).to.eql('cpu_idle');
-                var metricName = metrics[0];
-                console.log(metricName);
-
-                return clientData.getTags(metricName);
-            })
-            .then(function (response) {
-                debug('%j', response);
-                var tags = response.body.tags;
-                expect(tags).not.to.be(undefined);
-                expect(tags).to.eql({
-                    rack: ["rack1", "rack2"],
-                    host: ["server1", "server2"]
-                });
-            })
-            .then(function () {
-                var metricName = 'cpu_idle';
-
-                return clientData.getFields(metricName);
-            })
-            .then(function (response) {
-                debug('%j', response);
-                var fields = response.body.fields;
-                expect(fields).to.eql({value: {type: 'Number'}});
-            
-                return clientData.getDatapoints(queryList);
-            })
-            .then(function (response) {
-                debug('%j', response);
-                expect(response.body.results[0].metric).to.be.eql('cpu_idle');
-                expect(response.body.results[0].field).to.be.eql('value');
-                expect(response.body.results[0].rawCount).to.be.eql('2');
-
-                return clientData.generatePresignedUrl(queryList, 0, 1800, null, {});
-            })
-            .then(function (url) {
-                debug('url = %s', url);
-                // 浏览器输入url可查看datapoint
-                console.log(url);
-
-                return helper.get(url);
-            })
-            .then(function (body) {
-                // body.toString()的结果与getDatapoints的返回结果一致
-                console.log(body.toString());
+        });
+    });
+    it('getMetrics', function() {
+        return clientData.getMetrics(options)
+        .then(function (response) {
+            debug('%j', response);
+            var metrics = response.body.metrics;
+            expect(metrics).not.to.be(undefined);
+            expect(metrics[0]).to.eql('cpu_idle');
+            var metricName = metrics[0];
+            console.log(metricName);
+        });
+    });
+    it('getTags', function() {
+        return clientData.getTags(metricName, options)
+        .then(function (response) {
+            debug('%j', response);
+            var tags = response.body.tags;
+            expect(tags).not.to.be(undefined);
+            expect(tags).to.eql({
+                rack: ["rack1", "rack2"],
+                host: ["server1", "server2"]
             });
         });
+    });
+    it('getFields', function() {
+        return clientData.getFields(metricName, options)
+        .then(function (response) {
+            debug('%j', response);
+            var fields = response.body.fields;
+            expect(fields).to.eql({value: {type: 'Number'}});
+        });
+    });
+    it('getDatapoints', function() {
+        return clientData.getDatapoints(queryList, options)
+        .then(function (response) {
+            debug('%j', response);
+            expect(response.body.results[0].metric).to.be.eql('cpu_idle');
+            expect(response.body.results[0].field).to.be.eql('value');
+            // expect(response.body.results[0].rawCount).to.be.eql('2');
+        });
+    });
+    it('generatePresignedUrl', function() {
+        var url = clientData.generatePresignedUrl(queryList, 0, 1800, null, {});
+        debug('url = %s', url);
+        // 浏览器输入url可查看datapoint
+        console.log(url);
+        return helper.get(url)
+        .then(function (body) {
+            // body.toString()的结果与getDatapoints的返回结果一致
+            // console.log(body.toString());
+        });
+    });
+    it('getRowsWithSql', function() {
+        return clientData.getRowsWithSql(sql, options)
+        .then(function (response) {
+            // console.log(response.body);
+            // expect(response.body.rows.length).to.be.eql(4);
+        });
+    });
+    it('generatePresignedUrlWithSql', function () {
+        var url =  clientData.generatePresignedUrlWithSql(sql, 0, 1800, null, {});
+        return helper.get(url)
+        .then(function (body) {
+            // console.log(body.toString());
+        });
+    });
 });
