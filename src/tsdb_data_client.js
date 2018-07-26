@@ -20,6 +20,7 @@
 var util = require('util');
 var u = require('underscore');
 var qs = require('querystring');
+var zlib = require('zlib');
 
 var H = require('./headers');
 var Auth = require('./auth.js');
@@ -45,34 +46,36 @@ util.inherits(TsdbDataClient, BceBaseClient);
 
 // --- B E G I N ---
 
-TsdbDataClient.prototype.writeDatapoints = function (datapoints, useGzip, options) {
-    options = options || {};
+TsdbDataClient.prototype.writeDatapoints = function (datapoints, useGzip=true, options={}) {
     var params = {
         query: ''
     };
     var url = '/v1/datapoint';
-
+    var body = JSON.stringify({datapoints: datapoints});
+    if (useGzip) {
+        body = zlib.gzipSync(body)
+        options.headers = options.headers || {};
+        options.headers[H.CONTENT_ENCODING] = 'gzip';
+    }
     return this.sendRequest('POST', url, {
-        body: JSON.stringify({datapoints: datapoints}),
+        body: body,
         params: params,
-        config: options.config
+        ...options
     });
 };
 
-TsdbDataClient.prototype.getMetrics = function (options) {
-    options = options || {};
+TsdbDataClient.prototype.getMetrics = function (options={}) {
     var params = {
         query: ''
     };
 
     return this.sendRequest('GET', '/v1/metric', {
         params: params,
-        config: options.config
+        ...options
     });
 };
 
-TsdbDataClient.prototype.getTags = function (metricName, options) {
-    options = options || {};
+TsdbDataClient.prototype.getTags = function (metricName, options={}) {
     var url = '/v1/metric/' + metricName + '/tag';
     var params = {
         metricName: metricName,
@@ -81,12 +84,11 @@ TsdbDataClient.prototype.getTags = function (metricName, options) {
 
     return this.sendRequest('GET', url, {
         params: params,
-        config: options.config
+        ...options
     });
 };
 
-TsdbDataClient.prototype.getFields = function (metricName, options) {
-    options = options || {};
+TsdbDataClient.prototype.getFields = function (metricName, options={}) {
     var url = '/v1/metric/' + metricName + '/field';
     var params = {
         metricName: metricName,
@@ -95,12 +97,11 @@ TsdbDataClient.prototype.getFields = function (metricName, options) {
 
     return this.sendRequest('GET', url, {
         params: params,
-        config: options.config
+        ...options
     });
 };
 
-TsdbDataClient.prototype.getDatapoints = function (queryList, options) {
-    options = options || {};
+TsdbDataClient.prototype.getDatapoints = function (queryList, options={}) {
     var url = '/v1/datapoint';
     var params = u.extend({
             query: '',
@@ -108,36 +109,23 @@ TsdbDataClient.prototype.getDatapoints = function (queryList, options) {
         },
         u.pick(options, 'disablePresampling')
     );
-    var headers = {};
-    headers[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
-
     return this.sendRequest('PUT', url, {
-        headers: headers,
         body: JSON.stringify({queries: queryList}),
         params: params,
-        config: options.config
+        ...options
     });
 };
 
-TsdbDataClient.prototype.getDatapoints = function (queryList, options) {
-    options = options || {};
-    var url = '/v1/datapoint';
+TsdbDataClient.prototype.getRowsWithSql = function (sql, options={}) {
+    var url = '/v1/row';
     var params = u.extend({
-            query: JSON.stringify({queries: queryList}),
-            disablePresampling: false
-        },
-        u.pick(options, 'disablePresampling')
-    );
-    var headers = {};
-    headers[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
-
+            sql: sql
+    });
     return this.sendRequest('GET', url, {
-        headers: headers,
         params: params,
-        config: options.config
+        ...options
     });
 };
-
 
 TsdbDataClient.prototype.generatePresignedUrl = function (queryList, timestamp,
                                                      expirationInSeconds, headers, params, headersToSign, config) {
@@ -147,6 +135,26 @@ TsdbDataClient.prototype.generatePresignedUrl = function (queryList, timestamp,
         query: JSON.stringify({queries: queryList}),
         disablePresampling: false
     }, u.pick(params, 'disablePresampling'));
+    headers = headers || {};
+    headers.Host = require('url').parse(config.endpoint).host;
+
+    var credentials = config.credentials;
+    var auth = new Auth(credentials.ak, credentials.sk);
+    var authorization = auth.generateAuthorization(
+        'GET', resource, params, headers, timestamp, expirationInSeconds,
+        headersToSign);
+    params.authorization = authorization;
+
+    return util.format('%s%s?%s', config.endpoint, resource, qs.encode(params));
+};
+
+TsdbDataClient.prototype.generatePresignedUrlWithSql = function (sql, timestamp,
+                                                     expirationInSeconds, headers, params, headersToSign, config) {
+    var resource = '/v1/row';
+    config = u.extend({}, this.config, config);
+    params = u.extend({
+        sql: sql
+    });
     headers = headers || {};
     headers.Host = require('url').parse(config.endpoint).host;
 
@@ -176,7 +184,7 @@ TsdbDataClient.prototype.sendRequest = function (httpMethod, resource, varArgs) 
         metricName: null,
         key: null,
         body: null,
-        headers: {},
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
         params: {},
         config: {},
         outputStream: null

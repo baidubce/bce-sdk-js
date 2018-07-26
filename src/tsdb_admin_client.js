@@ -43,8 +43,7 @@ util.inherits(TsdbAdminClient, BceBaseClient);
 // --- B E G I N ---
 
 TsdbAdminClient.prototype.createDatabase = function (clientToken, databaseName,
-    ingestDataPointsMonthly, purchaseLength, description, couponName, options) {
-    options = options || {};
+    ingestDataPointsMonthly, purchaseLength, description, couponName, storeBytesQuota=0,options={}) {
     var url = '/v1/database';
     var params = {
         clientToken: clientToken
@@ -53,18 +52,18 @@ TsdbAdminClient.prototype.createDatabase = function (clientToken, databaseName,
     return this.sendRequest('POST', url, {
         params: params,
         body: JSON.stringify({
-            databaseName: databaseName,
-            ingestDataPointsMonthly: ingestDataPointsMonthly,
-            purchaseLength: purchaseLength,
-            couponName: couponName,
-            description: description
+            databaseName,
+            ingestDataPointsMonthly,
+            storeBytesQuota,
+            purchaseLength,
+            couponName,
+            description
         }),
-        config: options.config
+        ...options
     });
 };
 
-TsdbAdminClient.prototype.deleteDatabase = function (databaseId, options) {
-    options = options || {};
+TsdbAdminClient.prototype.deleteDatabase = function (databaseId, options={}) {
     var url = '/v1/database/' + databaseId;
     var params = {
         databaseId: databaseId,
@@ -73,12 +72,11 @@ TsdbAdminClient.prototype.deleteDatabase = function (databaseId, options) {
 
     return this.sendRequest('DELETE', url, {
         params: params,
-        config: options.config
+        ...options
     });
 };
 
-TsdbAdminClient.prototype.getDatabaseInfo = function (databaseId, options) {
-    options = options || {};
+TsdbAdminClient.prototype.getDatabaseInfo = function (databaseId, options={}) {
     var url = '/v1/database/' + databaseId;
     var params = {
         databaseId: databaseId,
@@ -87,12 +85,11 @@ TsdbAdminClient.prototype.getDatabaseInfo = function (databaseId, options) {
 
     return this.sendRequest('GET', url, {
         params: params,
-        config: options.config
+        ...options
     });
 };
 
-TsdbAdminClient.prototype.listDatabase = function (options) {
-    options = options || {};
+TsdbAdminClient.prototype.listDatabase = function (options={}) {
     var url = '/v1/database';
     var params = {
         query: ''
@@ -100,7 +97,7 @@ TsdbAdminClient.prototype.listDatabase = function (options) {
 
     return this.sendRequest('GET', url, {
         params: params,
-        config: options.config
+        ...options
     });
 };
 
