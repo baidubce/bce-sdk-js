@@ -65,8 +65,7 @@ TsdbAdminClient.prototype.createDatabase = function (clientToken, databaseName,
     });
 };
 
-TsdbAdminClient.prototype.deleteDatabase = function (databaseId, options) {
-    options = options || {};
+TsdbAdminClient.prototype.deleteDatabase = function (databaseId, options={}) {
     var url = '/v1/database/' + databaseId;
     var params = {
         databaseId: databaseId,
@@ -80,8 +79,7 @@ TsdbAdminClient.prototype.deleteDatabase = function (databaseId, options) {
     });
 };
 
-TsdbAdminClient.prototype.getDatabaseInfo = function (databaseId, options) {
-    options = options || {};
+TsdbAdminClient.prototype.getDatabaseInfo = function (databaseId, options={}) {
     var url = '/v1/database/' + databaseId;
     var params = {
         databaseId: databaseId,
@@ -95,8 +93,7 @@ TsdbAdminClient.prototype.getDatabaseInfo = function (databaseId, options) {
     });
 };
 
-TsdbAdminClient.prototype.listDatabase = function (options) {
-    options = options || {};
+TsdbAdminClient.prototype.listDatabase = function (options={}) {
     var url = '/v1/database';
     var params = {
         query: ''

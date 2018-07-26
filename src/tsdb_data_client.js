@@ -46,8 +46,7 @@ util.inherits(TsdbDataClient, BceBaseClient);
 
 // --- B E G I N ---
 
-TsdbDataClient.prototype.writeDatapoints = function (datapoints, useGzip, options) {
-    options = options || {};
+TsdbDataClient.prototype.writeDatapoints = function (datapoints, useGzip=true, options={}) {
     var params = {
         query: ''
     };
@@ -66,8 +65,7 @@ TsdbDataClient.prototype.writeDatapoints = function (datapoints, useGzip, option
     });
 };
 
-TsdbDataClient.prototype.getMetrics = function (options) {
-    options = options || {};
+TsdbDataClient.prototype.getMetrics = function (options={}) {
     var params = {
         query: ''
     };
@@ -79,8 +77,7 @@ TsdbDataClient.prototype.getMetrics = function (options) {
     });
 };
 
-TsdbDataClient.prototype.getTags = function (metricName, options) {
-    options = options || {};
+TsdbDataClient.prototype.getTags = function (metricName, options={}) {
     var url = '/v1/metric/' + metricName + '/tag';
     var params = {
         metricName: metricName,
