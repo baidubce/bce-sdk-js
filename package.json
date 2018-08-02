@@ -1,6 +1,6 @@
 {
   "name": "@baiducloud/sdk",
-  "version": "0.3.0",
+  "version": "1.0.0-rc.0",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "index.js",
   "directories": {
@@ -8,8 +8,8 @@
   },
   "scripts": {
     "test": "./test/run-all.sh",
-    "fecs": "fecs src",
-    "pack": "node_modules/.bin/browserify -s baidubce.sdk index.js -o baidubce-sdk.bundle.js && uglifyjs baidubce-sdk.bundle.js --compress --mangle -o baidubce-sdk.bundle.min.js"
+    "pack": "browserify -s baidubce.sdk index.js -o dist/baidubce-sdk.bundle.js && uglifyjs dist/baidubce-sdk.bundle.js --compress --mangle -o dist/baidubce-sdk.bundle.min.js",
+    "publish:bos": "node ./publish/publish_to_bos.js"
   },
   "repository": {
     "type": "git",
@@ -30,6 +30,7 @@
     "browserify": "^16.2.2",
     "coveralls": "^3.0.2",
     "expect.js": "^0.3.1",
+    "fs-walk": "0.0.2",
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0"
   }
