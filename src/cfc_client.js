@@ -232,6 +232,17 @@ CfcClient.prototype.listAliases = function (functionName, opt_options) {
     });
 };
 
+
+CfcClient.prototype.sendRequest = function (httpMethod, resource, varArgs) {
+    if (this.config.workspaceId) {
+        if (!varArgs.headers) {
+            varArgs.headers = {};
+        }
+        varArgs.headers['X-CFC-Workspace-Id'] = this.config.workspaceId;
+    }
+    return BceBaseClient.prototype.sendRequest.call(this, httpMethod, resource, varArgs);
+};
+
 module.exports = CfcClient;
 
 
