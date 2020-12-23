@@ -181,7 +181,18 @@ BosClient.prototype.createBucket = function (bucketName, options) {
 // BosClient.prototype.getBucketEncryption =
 // BosClient.prototype.putBucketEncryption =
 // BosClient.prototype.getBucketStorageclass =
-// BosClient.prototype.putBucketStorageclass =
+BosClient.prototype.putBucketStorageclass = function (bucketName, storageClass, options) {
+    options = options || {};
+    var headers = {};
+    headers[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
+    return this.sendRequest('PUT', {
+        bucketName: bucketName,
+        headers: headers,
+        params: {storageClass: ''},
+        body: JSON.stringify({storageClass: storageClass}),
+        config: options.config
+    });
+};
 // BosClient.prototype.deleteBucketLifecycle =
 // BosClient.prototype.getBucketLifecycle =
 // BosClient.prototype.putBucketLifecycle =
@@ -258,7 +269,20 @@ BosClient.prototype.setBucketCannedAcl = function (bucketName, cannedAcl, option
     });
 };
 
-BosClient.prototype.putBucketAcl =
+BosClient.prototype.putBucketAcl = function (bucketName, acl, options) {
+    options = options || {};
+
+    var headers = {};
+    headers[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
+    headers[H.X_BCE_ACL] = acl;
+    return this.sendRequest('PUT', {
+        bucketName: bucketName,
+        headers: headers,
+        params: {acl: ''},
+        config: options.config
+    });
+};
+
 BosClient.prototype.setBucketAcl = function (bucketName, acl, options) {
     options = options || {};
 
