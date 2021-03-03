@@ -232,6 +232,122 @@ CfcClient.prototype.listAliases = function (functionName, opt_options) {
     });
 };
 
+CfcClient.prototype.listRelations = function (opt_options) {
+    var options = opt_options || {};
+    var params = u.extend(
+        u.pick(options, 'FunctionBrn')
+    );
+
+    return this.sendRequest('GET', '/v1/relation', {
+        params: params,
+    });
+};
+
+CfcClient.prototype.createRelation = function (body, opt_options) {
+    /**
+     var body =
+     {
+       'Target': 'string',
+       'Source': 'string',
+       'Data': {
+         'Resource': 'string',
+         'Status': 'string',
+         'EventType': 'string'
+         'Name': 'string'
+       },
+     };
+     */
+    debug('createRelation, body = %j', body);
+
+    var options = opt_options || {};
+    var params = u.extend(
+        u.pick(options, 'FunctionBrn')
+    );
+
+    return this.sendRequest('POST', '/v1/relation', {
+        // params: params,
+        body: JSON.stringify(body)
+    });
+};
+
+CfcClient.prototype.updateRelation = function (body) {
+    /**
+     var body = {
+          'RelationId': 'string',
+          'Target': 'string',
+          'Source': 'string',          
+          'Data': {
+            'Resource': 'string',
+            'Status': 'string',
+            'EventType': 'string'
+            'Name': 'string'
+          }
+        }
+     */
+
+    return this.sendRequest('PUT', '/v1/relation', {
+        body: JSON.stringify(body)
+    });
+};
+
+CfcClient.prototype.deleteRelation = function (opt_options) {
+    var options = opt_options || {};
+    var params = u.extend(
+        u.pick(options, 'Target', 'Source', 'RelationId')
+    );
+    return this.sendRequest('DELETE', '/v1/relation', {
+        params: params
+    });
+};
+
+
+CfcClient.prototype.listEventSourceMappings = function (opt_options) {
+    var options = opt_options || {};
+    var params = u.extend(
+        u.pick(options, 'FunctionName')
+    );
+
+    return this.sendRequest('GET', '/v1/event-source-mappings', {
+        params: params,
+    });
+};
+
+CfcClient.prototype.createEventSourceMapping = function (body) {
+    /**
+     var body =
+     {
+        BatchSize: 100
+        Enabled: true
+        EventSourceBrn: "42f6fbc2cd374bfcb80d9967370fd8ff__qa_preonline_cfc"
+        FunctionName: "brn:bce:cfc:bj:1a2cbf55b97ac8a7c760c4177db4e17d:function:html:$LATEST"
+        Source: "kafka"
+        StartingPosition: "TRIM_HORIZON"
+    }
+     */
+    debug('createEventSourceMapping, body = %j', body);
+
+    return this.sendRequest('POST', '/v1/event-source-mappings', {
+        body: JSON.stringify(body)
+    });
+};
+
+CfcClient.prototype.updateEventSourceMapping = function (esmId, body) {
+    /**
+     var body = {
+            BatchSize: 100
+            Enabled: false
+            FunctionName: "brn:bce:cfc:bj:1a2cbf55b97ac8a7c760c4177db4e17d:function:html:$LATEST"
+        }
+     */
+    return this.sendRequest('PUT', '/v1/event-source-mappings/' + esmId, {
+        body: JSON.stringify(body)
+    });
+};
+
+CfcClient.prototype.deleteEventSourceMapping = function (esmId) {
+    return this.sendRequest('DELETE', '/v1/event-source-mappings/' + esmId, {});
+};
+
 
 CfcClient.prototype.sendRequest = function (httpMethod, resource, varArgs) {
     if (this.config.workspaceId) {
