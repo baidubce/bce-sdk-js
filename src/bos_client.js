@@ -659,7 +659,7 @@ BosClient.prototype.uploadPartFromFile = function (bucketName, key, uploadId, pa
 
 BosClient.prototype.uploadPartFromBlob = function (bucketName, key, uploadId, partNumber,
                                                    partSize, blob, options) {
-    if (blob.size !== partSize) {
+    if ((blob.size||blob.length) !== partSize) {
         throw new TypeError(util.format('Invalid partSize %d and data length %d',
             partSize, blob.size));
     }
