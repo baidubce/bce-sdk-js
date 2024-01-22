@@ -20,7 +20,9 @@ exports.DEFAULT_SERVICE_DOMAIN = 'baidubce.com';
 
 exports.DEFAULT_CONFIG = {
     protocol: 'http',
-    region: 'bj'
+    region: 'bj',
+    // if true, use path style to visit bos resource, default is false
+    pathStyleEnable: false,
 };
 
 

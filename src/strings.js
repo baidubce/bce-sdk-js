@@ -39,3 +39,19 @@ exports.trim = function (string) {
     return (string || '').replace(/^\s+|\s+$/g, '');
 };
 
+/*
+ * 判断是否以某个字符串结尾
+ */
+exports.hasSuffix = function (string, suffix) {
+    if (!suffix) {
+        return true;
+    }
+
+    if (!string) {
+        return false;
+    }
+
+    var len = suffix.length;
+    return len > 0 && string.lastIndexOf(suffix) === string.length - len;
+};
+

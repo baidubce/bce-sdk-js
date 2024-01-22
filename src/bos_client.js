@@ -35,6 +35,7 @@ var MimeType = require('./mime.types');
 var WMStream = require('./wm_stream');
 var Multipart = require('./multipart');
 var Base64 = require('./base64');
+var {domainUtils} = require('./helper');
 
 // var MIN_PART_SIZE = 1048576;                // 1M
 // var THREAD = 2;
@@ -78,22 +79,59 @@ var IMAGE_DOMAIN = 'bceimg.com';
  * @param {Object} config The bos client configuration.
  * @extends {BceBaseClient}
  */
-function BosClient(config) {
-    BceBaseClient.call(this, config, 'bos', true);
+// function BosClient(config) {
+//     BceBaseClient.call(this, config, 'bos', true);
 
-    /**
-     * @type {HttpClient}
-     */
-    this._httpAgent = null;
+//     /**
+//      * @type {HttpClient}
+//      */
+//     this._httpAgent = null;
+// }
+// util.inherits(BosClient, BceBaseClient);
+
+class BosClient extends BceBaseClient {
+    constructor(config) {
+        super(config, 'bos', true);
+    }
 }
-util.inherits(BosClient, BceBaseClient);
 
 // --- B E G I N ---
+/**
+ * generate an authorization url with expire time and optional arguments
+ * @param {string} bucketName the target bucket name
+ * @param {string} key the target object name 
+ * @param {*} timestamp a number representing timestamp in seconds
+ * @param {*} expirationInSeconds expire time in seconds
+ * @param {*} headers optional http request headers, default is empty
+ * @param {*} params optional sign params, default is empty
+ * @param {*} headersToSign optional the request headers list to calcualated in the signature, default is empty
+ * @param {*} config the client configuration
+ * @returns {string} the presigned url with authorization string
+ */
 BosClient.prototype.generatePresignedUrl = function (bucketName, key, timestamp,
                                                      expirationInSeconds, headers, params, headersToSign, config) {
 
     config = u.extend({}, this.config, config);
+
     bucketName = config.cname_enabled ? '' : bucketName;
+    const endpoint = config.endpoint;
+    // 使用的是自定义域名 / virtual-host
+    if (config.cname_enabled || domainUtils.isCnameLikeHost(endpoint)) {
+        if (domainUtils.needCompatibleBucketAndEndpoint(bucketName, endpoint)) {
+            config.endpoint = domainUtils.replaceEndpointByBucket(bucketName, endpoint);
+        }
+    }
+    else {
+        // 非ip/bns，pathStyleEnable不为true，强制转为pathStyle
+        // 否则保持原状
+        if (!config.pathStyleEnable && !domainUtils.isIpHost(endpoint)) {
+            if (domainUtils.isBosHost(endpoint)) {
+                const {protocal, host} = domainUtils.getDomainWithoutProtocal(endpoint);
+                config.endpoint = protocal + bucketName + '.' + host;
+            }
+        }
+    }
+
     params = params || {};
 
     var resource = path.normalize(path.join(
@@ -112,6 +150,7 @@ BosClient.prototype.generatePresignedUrl = function (bucketName, key, timestamp,
         params['x-bce-security-token'] = config.sessionToken;
     }
 
+    // Generate the authorization string and return the signed url.
     var authorization = auth.generateAuthorization(
         'GET', resource, params, headers, timestamp, expirationInSeconds,
         headersToSign);
@@ -1633,7 +1672,6 @@ BosClient.prototype.selectObject = function (bucketName, objectName, body, optio
 
 
 // --- E N D ---
-
 BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
     var defaultArgs = {
         bucketName: null,
@@ -1644,20 +1682,38 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
         config: {},
         outputStream: null
     };
-    varArgs.bucketName = this.config.cname_enabled ? '' : varArgs.bucketName;
+    const endpoint = this.config.endpoint;
+    // 使用的是自定义域名 / virtual-host
+    if (this.config.cname_enabled || domainUtils.isCnameLikeHost(endpoint)) {
+        // if virtual host endpoint and bucket is not empty, compatible bucket and endpoint
+        if (domainUtils.needCompatibleBucketAndEndpoint(varArgs.bucketName, endpoint)) {
+            this.config.endpoint = domainUtils.replaceEndpointByBucket(varArgs.bucketName, endpoint);
+        }
+    }
+    else {
+        // 非ip/bns，pathStyleEnable不为true，强制转为pathStyle
+        // 否则保持原状
+        if (!this.config.pathStyleEnable && !domainUtils.isIpHost(endpoint)) {
+            if (domainUtils.isBosHost(endpoint)) {
+                const {protocal, host} = domainUtils.getDomainWithoutProtocal(endpoint);
+                const bucketName = varArgs.bucketName || '';
+                this.config.endpoint = protocal + (bucketName ? bucketName + '.' : '') + host;
+            }
+        }
+    }
+    varArgs.bucketName = (this.config.cname_enabled) ? '' : varArgs.bucketName;
     var args = u.extend(defaultArgs, varArgs);
 
     var config = u.extend({}, this.config, args.config);
     var resource = requestUrl || path.normalize(path.join(
         args.removeVersionPrefix ? '/' : '/v1',
-        /\.[\w\-]+\.bcebos\.com$/.test(config.endpoint) ? '' : strings.normalize(args.bucketName || ''),
+        (/\.[\w\-]+\.bcebos\.com$/.test(config.endpoint) && !this.config.cname_enabled)? '' : strings.normalize(args.bucketName || ''),
         strings.normalize(args.key || '', false)
     )).replace(/\\/g, '/');
 
     if (config.sessionToken) {
         args.headers[H.SESSION_TOKEN] = config.sessionToken;
     }
-
     return this.sendHTTPRequest(httpMethod, resource, args, config);
 };
 
@@ -1670,6 +1726,13 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
 //     return auth.generateAuthorization(httpMethod, path, params, headers, revisionTimestamp / 1000);
 // };
 
+/**
+ *  
+ * @param {string} httpMethod GET,POST,PUT,DELETE,HEAD
+ * @param {string} resource The http request path.
+ * @param {Object} args The request info.
+ * @param {Object} config The http client configuration
+ */
 BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, config) {
     var client = this;
 

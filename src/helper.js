@@ -20,6 +20,7 @@ var async = require('async');
 var u = require('underscore');
 var Q = require('q');
 var debug = require('debug')('bce-sdk:helper');
+var strings = require('./strings');
 
 // 超过这个限制就开始分片上传
 var MIN_MULTIPART_SIZE = 5 * 1024 * 1024; // 5M
@@ -31,6 +32,9 @@ var DATA_TYPE_FILE     = 1;
 var DATA_TYPE_BUFFER   = 2;
 var DATA_TYPE_STREAM   = 3;
 var DATA_TYPE_BLOB     = 4;
+
+// cname形式的域名列表
+var DEFAULT_CNAME_LIKE_LIST = [".cdn.bcebos.com"]
 
 exports.omitNull = function (value, key, object) {
     return value != null;
@@ -213,7 +217,126 @@ function getTasks(data, uploadId, bucket, object, size, partSize) {
     return tasks;
 }
 
+/**
+ * 获取域名不带协议的部分
+ * @param {string} host 
+ * @returns 
+ */
+const getDomainWithoutProtocal = function(host) {
+    const idx = host.indexOf('://');
+    return {
+        protocal: !!~idx ? host.slice(0, idx + 3) : '',
+        host: !!~idx ? host.slice(idx + 3) : host
+    };
+}
 
+/**
+ * 获取域名中不带端口号的部分
+ * @param {string} host 
+ * @return {string} 
+ */
+function _getDomainWithoutPort(originHost)  {
+    const {host} = getDomainWithoutProtocal(originHost);
+    if (!host.includes(':')) {
+        return host;
+    }
+	
+	return host.slice(0, host.indexOf(':'));
+}
+
+// 判断是否为virutal host
+const isVirtualHost = function (host) {
+    const domain = _getDomainWithoutPort(host)
+    const arr = domain.split(".");
+    if (arr.length !== 4) {
+        return false
+    }
+    // bucket max length is 64
+    if (arr[0].length === 0 || arr[0].length > 64) {
+        return false
+    }
+    if (arr[2] != "bcebos" || arr[3] != "com") {
+        return false
+    }
+    return true;
+}
+
+// 判断是否为ip host
+const isIpHost = function (host) {
+    const domain = _getDomainWithoutPort(host)
+    const arr = domain.split(".");
+    if (arr.length !== 4) {
+        return false
+    }
+    // bucket max length is 64
+    if (arr[0].length == 0 || arr[0].length > 64) {
+        return false
+    }
+    if (arr[2] != "bcebos" || arr[3] != "com") {
+        return false
+    }
+    return true;
+}
+
+// 判断是否为bos默认官方 host
+const isBosHost = function(host)  {
+	const domain = _getDomainWithoutPort(host);
+    const arr = domain.split(".");
+    if (arr.length !== 3) {
+        return false;
+    }
+    if (arr[1] !== "bcebos" || arr[2] !== "com") {
+        return false;
+    }
+	return true
+}
+
+const isCnameLikeHost = function(host) {
+	const result = DEFAULT_CNAME_LIKE_LIST
+                    .map((suffix) => strings.hasSuffix(host.toLowerCase(), suffix))
+                    .filter(item => item);
+
+	return result.length;
+}
+
+const needCompatibleBucketAndEndpoint = function(bucket, endpoint) {
+	if (!bucket || bucket === "") {
+		return false
+	}
+    // 自定义域名
+	if (!isVirtualHost(endpoint)) {
+		return false
+	}
+    // <bucket>.xxx
+	if (endpoint.split(".")[0] === bucket) {
+		return false
+	}
+	// bucket from api and from endpoint is different
+	return true
+}
+
+/**
+ * replace endpoint by bucket, only effective when two bucket are in same region, otherwise server return NoSuchBucket error
+ * @param {*} bucket 
+ * @param {*} endpoint 
+ * @returns 
+ */
+const replaceEndpointByBucket = function(bucket, endpoint) {
+    const {protocal, host} = getDomainWithoutProtocal(endpoint);
+	const arr = host.split(".");
+	arr[0] = protocal + bucket;
+	return arr.join(".")
+}
+
+exports.domainUtils =  {
+    getDomainWithoutProtocal,
+    isVirtualHost,
+    isIpHost,
+    isBosHost,
+    isCnameLikeHost,
+    needCompatibleBucketAndEndpoint,
+    replaceEndpointByBucket
+};
 
 
 

@@ -170,7 +170,11 @@ Auth.prototype.hash = function (data, key) {
 };
 
 /* IAM 逻辑 */
-
+/**
+ * convert the string of timestamp format to ISO8601 format
+ * @param {number} timestamp a number representing timestamp in seconds
+ * @returns 
+ */
 Auth.prototype.getTimestamp = function getTimestamp(timestamp) {
     var now = timestamp ? new Date(timestamp * 1000) : new Date();
     return now.toISOString().replace(/\.\d+Z$/, 'Z');
