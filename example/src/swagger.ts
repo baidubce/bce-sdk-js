@@ -27,7 +27,7 @@ export default {
       }
     ],
     paths: {
-      '/listBuckets': {
+      '/api/listBuckets': {
         get: {
           summary: '列举请求者拥有的所有bucket',
           tags: ['Bucket'],

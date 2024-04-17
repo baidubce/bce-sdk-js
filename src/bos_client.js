@@ -33,9 +33,12 @@ var HttpClient = require('./http_client');
 var BceBaseClient = require('./bce_base_client');
 var MimeType = require('./mime.types');
 var WMStream = require('./wm_stream');
+var stream = require('stream');
 var Multipart = require('./multipart');
 var Base64 = require('./base64');
 var {domainUtils} = require('./helper');
+var debug = require('debug')('bce-sdk:super-upload');
+var SuperUpload = require('./bos/super_upload');
 
 // var MIN_PART_SIZE = 1048576;                // 1M
 // var THREAD = 2;
@@ -79,21 +82,16 @@ var IMAGE_DOMAIN = 'bceimg.com';
  * @param {Object} config The bos client configuration.
  * @extends {BceBaseClient}
  */
-// function BosClient(config) {
-//     BceBaseClient.call(this, config, 'bos', true);
 
-//     /**
-//      * @type {HttpClient}
-//      */
-//     this._httpAgent = null;
-// }
-// util.inherits(BosClient, BceBaseClient);
+function BosClient(config) {
+    BceBaseClient.call(this, config, 'bos', true);
 
-class BosClient extends BceBaseClient {
-    constructor(config) {
-        super(config, 'bos', true);
-    }
+    /**
+     * @type {HttpClient}
+     */
+    this._httpAgent = null;
 }
+util.inherits(BosClient, BceBaseClient);
 
 // --- B E G I N ---
 /**
@@ -108,16 +106,25 @@ class BosClient extends BceBaseClient {
  * @param {*} config the client configuration
  * @returns {string} the presigned url with authorization string
  */
-BosClient.prototype.generatePresignedUrl = function (bucketName, key, timestamp,
-                                                     expirationInSeconds, headers, params, headersToSign, config) {
+BosClient.prototype.generatePresignedUrl = function (
+    bucketName, 
+    key, 
+    timestamp,
+    expirationInSeconds, 
+    headers, 
+    params, 
+    headersToSign, 
+    config
+) {
 
     config = u.extend({}, this.config, config);
 
     bucketName = config.cname_enabled ? '' : bucketName;
     const endpoint = config.endpoint;
     // 使用的是自定义域名 / virtual-host
-    if (config.cname_enabled || domainUtils.isCnameLikeHost(endpoint)) {
+    if (domainUtils.isCnameLikeHost(endpoint) || config.cname_enabled) {
         if (domainUtils.needCompatibleBucketAndEndpoint(bucketName, endpoint)) {
+            // bucket from api and from endpoint is different
             config.endpoint = domainUtils.replaceEndpointByBucket(bucketName, endpoint);
         }
     }
@@ -134,11 +141,15 @@ BosClient.prototype.generatePresignedUrl = function (bucketName, key, timestamp,
 
     params = params || {};
 
-    var resource = path.normalize(path.join(
-        config.removeVersionPrefix ? '/' : '/v1',
-        /\.[\w\-]+\.bcebos\.com$/.test(config.endpoint) ? '' : strings.normalize(bucketName || ''),
-        strings.normalize(key || '', false)
-    )).replace(/\\/g, '/');
+    var resource = path
+        .normalize(
+            path.join(
+                config.removeVersionPrefix ? '/' : '/v1',
+                /\.[\w\-]+\.bcebos\.com$/.test(config.endpoint) ? '' : strings.normalize(bucketName || ''),
+                strings.normalize(key || '', false)
+            )
+        )
+        .replace(/\\/g, '/');
 
     headers = headers || {};
     headers.Host = require('url').parse(config.endpoint).host;
@@ -152,8 +163,14 @@ BosClient.prototype.generatePresignedUrl = function (bucketName, key, timestamp,
 
     // Generate the authorization string and return the signed url.
     var authorization = auth.generateAuthorization(
-        'GET', resource, params, headers, timestamp, expirationInSeconds,
-        headersToSign);
+        'GET',
+        resource,
+        params,
+        headers,
+        timestamp,
+        expirationInSeconds,
+        headersToSign
+    );
 
     params.authorization = authorization;
 
@@ -164,11 +181,15 @@ BosClient.prototype.generateUrl = function (bucketName, key, pipeline, cdn, conf
     config = u.extend({}, this.config, config);
     bucketName = config.cname_enabled ? '' : bucketName;
 
-    var resource = path.normalize(path.join(
-        config.removeVersionPrefix ? '/' : '/v1',
-        strings.normalize(bucketName || ''),
-        strings.normalize(key || '', false)
-    )).replace(/\\/g, '/');
+    var resource = path
+        .normalize(
+            path.join(
+                config.removeVersionPrefix ? '/' : '/v1',
+                strings.normalize(bucketName || ''),
+                strings.normalize(key || '', false)
+            )
+        )
+        .replace(/\\/g, '/');
 
     // pipeline表示如何对图片进行处理.
     var command = '';
@@ -176,17 +197,21 @@ BosClient.prototype.generateUrl = function (bucketName, key, pipeline, cdn, conf
         if (u.isString(pipeline)) {
             if (/^@/.test(pipeline)) {
                 command = pipeline;
-            }
-            else {
+            } else {
                 command = '@' + pipeline;
             }
-        }
-        else {
-            command = '@' + u.map(pipeline, function (params) {
-                    return u.map(params, function (value, key) {
-                        return [COMMAND_MAP[key] || key, value].join('_');
-                    }).join(',');
-                }).join('|');
+        } else {
+            command =
+                '@' +
+                u
+                    .map(pipeline, function (params) {
+                        return u
+                            .map(params, function (value, key) {
+                                return [COMMAND_MAP[key] || key, value].join('_');
+                            })
+                            .join(',');
+                    })
+                    .join('|');
         }
     }
     if (command) {
@@ -204,8 +229,7 @@ BosClient.prototype.listBuckets = function (options) {
     return this.sendRequest('GET', {config: options.config});
 };
 
-BosClient.prototype.putBucket =
-BosClient.prototype.createBucket = function (bucketName, options) {
+BosClient.prototype.putBucket = BosClient.prototype.createBucket = function (bucketName, options) {
     options = options || {};
 
     return this.sendRequest('PUT', {
@@ -252,7 +276,7 @@ BosClient.prototype.putBucketStaticWebsite = function (bucketName, body, options
         body: JSON.stringify(body),
         config: options.config
     });
-}
+};
 
 /**
  * 获取bucket的静态网站托管信息
@@ -270,7 +294,7 @@ BosClient.prototype.getBucketStaticWebsite = function (bucketName, options) {
         params: {website: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 删除bucket设置的静态网站托管信息，并关闭此bucket的静态网站托管
@@ -288,7 +312,7 @@ BosClient.prototype.deleteBucketStaticWebsite = function (bucketName, options) {
         params: {website: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 开启指定Bucket的加密开关
@@ -311,7 +335,7 @@ BosClient.prototype.putBucketEncryption = function (bucketName, options) {
         headers: options.headers,
         config: options.config
     });
-}
+};
 
 /**
  * 判断Bucket服务端加密是否打开
@@ -329,7 +353,7 @@ BosClient.prototype.getBucketEncryption = function (bucketName, options) {
         params: {encryption: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 关闭服务端加密功能
@@ -347,7 +371,7 @@ BosClient.prototype.deleteBucketEncryption = function (bucketName, options) {
         params: {encryption: ''},
         config: options.config
     });
-}
+};
 
 // BosClient.prototype.getBucketStorageclass =
 BosClient.prototype.putBucketStorageclass = function (bucketName, storageClass, options) {
@@ -385,9 +409,7 @@ BosClient.prototype.putBucketLifecycle = function (bucketName, body, options) {
         body: JSON.stringify(body),
         config: options.config
     });
-
-
-}
+};
 
 /**
  * 获取定义的生命周期管理规则详细信息
@@ -405,7 +427,7 @@ BosClient.prototype.getBucketLifecycle = function (bucketName, options) {
         params: {lifecycle: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 删除定义的生命周期管理规则
@@ -423,7 +445,7 @@ BosClient.prototype.deleteBucketLifecycle = function (bucketName, options) {
         params: {lifecycle: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 开启Bucket的访问日志并指定存放日志的Bucket和访问日志的文件前缀
@@ -451,7 +473,7 @@ BosClient.prototype.putBucketLogging = function (bucketName, body, options) {
         body: JSON.stringify(body),
         config: options.config
     });
-}
+};
 
 /**
  * 获取Bucket的访问日志配置
@@ -469,7 +491,7 @@ BosClient.prototype.getBucketLogging = function (bucketName, options) {
         params: {logging: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 关闭Bucket访问日志记录功能
@@ -487,7 +509,7 @@ BosClient.prototype.deleteBucketLogging = function (bucketName, options) {
         params: {logging: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 创建数据同步
@@ -502,7 +524,9 @@ BosClient.prototype.putBucketReplication = function (bucketName, body, options) 
     body = u.pick(body || {}, ['status', 'resource', 'destination', 'replicateHistory', 'replicateDeletes', 'id']);
 
     if (!body.id || !body.status || !body.resource || !body.destination || !body.replicateDeletes) {
-        throw new TypeError('field "id", "status", "resource", "destination", "replicateHistory", "replicateDeletes" should not be empty.');
+        throw new TypeError(
+            'field "id", "status", "resource", "destination", "replicateHistory", "replicateDeletes" should not be empty.'
+        );
     }
 
     if (!body.destination.bucket) {
@@ -515,7 +539,7 @@ BosClient.prototype.putBucketReplication = function (bucketName, body, options) 
         body: JSON.stringify(body),
         config: options.config
     });
-}
+};
 
 /**
  * 获取bucket指定id的数据同步信息
@@ -537,7 +561,7 @@ BosClient.prototype.getBucketReplication = function (bucketName, id, options) {
         params: {replication: '', id},
         config: options.config
     });
-}
+};
 
 /**
  * 获取指定id的数据同步复制的进程状态
@@ -559,8 +583,7 @@ BosClient.prototype.getBucketReplicationProgress = function (bucketName, id, opt
         params: {replicationProgress: '', id},
         config: options.config
     });
-}
-
+};
 
 /**
  * 删除对应id的数据同步复制配置
@@ -582,7 +605,7 @@ BosClient.prototype.deleteBucketReplication = function (bucketName, id, options)
         params: {replication: '', id},
         config: options.config
     });
-}
+};
 
 /**
  * 获取bucket所有的replication同步规则
@@ -600,8 +623,7 @@ BosClient.prototype.listBucketReplication = function (bucketName, options) {
         params: {replication: '', list: ''},
         config: options.config
     });
-}
-
+};
 
 // BosClient.prototype.deleteBucket =
 // BosClient.prototype.headBucket = function() {
@@ -611,10 +633,7 @@ BosClient.prototype.listBucketReplication = function (bucketName, options) {
 BosClient.prototype.listObjects = function (bucketName, options) {
     options = options || {};
 
-    var params = u.extend(
-        {maxKeys: 1000},
-        u.pick(options, 'maxKeys', 'prefix', 'marker', 'delimiter')
-    );
+    var params = u.extend({maxKeys: 1000}, u.pick(options, 'maxKeys', 'prefix', 'marker', 'delimiter'));
 
     return this.sendRequest('GET', {
         bucketName: bucketName,
@@ -623,8 +642,7 @@ BosClient.prototype.listObjects = function (bucketName, options) {
     });
 };
 
-BosClient.prototype.headBucket =
-BosClient.prototype.doesBucketExist = function (bucketName, options) {
+BosClient.prototype.headBucket = BosClient.prototype.doesBucketExist = function (bucketName, options) {
     options = options || {};
 
     return this.sendRequest('HEAD', {
@@ -769,8 +787,7 @@ BosClient.prototype.deleteObjectAcl = function (bucketName, objectName, options)
         params: {acl: ''},
         config: options.config
     });
-}
-
+};
 
 BosClient.prototype.getBucketLocation = function (bucketName, options) {
     options = options || {};
@@ -791,7 +808,7 @@ BosClient.prototype.deleteMultipleObjects = function (bucketName, objects, optio
 
     return this.sendRequest('POST', {
         bucketName: bucketName,
-        params: {'delete': ''},
+        params: {delete: ''},
         body: JSON.stringify({
             objects: body
         }),
@@ -868,11 +885,9 @@ BosClient.prototype.putObjectFromFile = function (bucketName, key, filename, opt
 
     // 如果没有显式的设置，就使用默认值
     var fileSize = fs.statSync(filename).size;
-    var contentLength = u.has(options, H.CONTENT_LENGTH)
-        ? options[H.CONTENT_LENGTH]
-        : fileSize;
+    var contentLength = u.has(options, H.CONTENT_LENGTH) ? options[H.CONTENT_LENGTH] : fileSize;
     if (contentLength > fileSize) {
-        throw new Error('options[\'Content-Length\'] should less than ' + fileSize);
+        throw new Error("options['Content-Length'] should less than " + fileSize);
     }
 
     headers[H.CONTENT_LENGTH] = contentLength;
@@ -891,7 +906,8 @@ BosClient.prototype.putObjectFromFile = function (bucketName, key, filename, opt
     var me = this;
 
     function putObjectWithRetry(lastRetryTimes) {
-        return me.putObject(bucketName, key, fs.createReadStream(filename, streamOptions), options)
+        return me
+            .putObject(bucketName, key, fs.createReadStream(filename, streamOptions), options)
             .catch(function (err) {
                 var serverTimestamp = new Date(err[H.X_BCE_DATE]).getTime();
 
@@ -907,11 +923,10 @@ BosClient.prototype.putObjectFromFile = function (bucketName, key, filename, opt
 
     if (!u.has(options, H.CONTENT_MD5)) {
         var fp2 = fs.createReadStream(filename, streamOptions);
-        return crypto.md5stream(fp2)
-            .then(function (md5sum) {
-                options[H.CONTENT_MD5] = md5sum;
-                return putObjectWithRetry(options.retryCount || MAX_RETRY_COUNT);
-            });
+        return crypto.md5stream(fp2).then(function (md5sum) {
+            options[H.CONTENT_MD5] = md5sum;
+            return putObjectWithRetry(options.retryCount || MAX_RETRY_COUNT);
+        });
     }
 
     return putObjectWithRetry(options.retryCount || MAX_RETRY_COUNT);
@@ -930,19 +945,16 @@ BosClient.prototype.getObjectMetadata = function (bucketName, key, options) {
 BosClient.prototype.getObject = function (bucketName, key, range, options) {
     if (!key) {
         throw new TypeError('key should not be empty.');
-    }
-    else if (/\/\/+/.test(key)) {
+    } else if (/\/\/+/.test(key)) {
         throw new TypeError('key should not contain consecutive forward slashes (/).');
-    }
-    else if (/^[/\\]/.test(key) || /[/\\]$/.test(key)) {
+    } else if (/^[/\\]/.test(key) || /[/\\]$/.test(key)) {
         throw new TypeError('key should not start or end with a forward slash (/) or a backslash (\\).');
-    }
-    else if (/\/\.\.\//.test(key)) {
+    } else if (/\/\.\.\//.test(key)) {
         throw new TypeError('path in key should not contain consecutive periods (..).');
     }
 
     options = options || {};
-    var headers = {}
+    var headers = {};
     if (options[H.X_BCE_TRAFFIC_LIMIT]) {
         const limit = options[H.X_BCE_TRAFFIC_LIMIT];
 
@@ -957,9 +969,12 @@ BosClient.prototype.getObject = function (bucketName, key, range, options) {
     return this.sendRequest('GET', {
         bucketName: bucketName,
         key: key,
-        headers: u.extend({
-            Range: range ? util.format('bytes=%s', range) : ''
-        }, headers),
+        headers: u.extend(
+            {
+                Range: range ? util.format('bytes=%s', range) : ''
+            },
+            headers
+        ),
         config: options.config,
         outputStream: outputStream
     }).then(function (response) {
@@ -971,14 +986,11 @@ BosClient.prototype.getObject = function (bucketName, key, range, options) {
 BosClient.prototype.getObjectToFile = function (bucketName, key, filename, range, options) {
     if (!key) {
         throw new TypeError('key should not be empty.');
-    }
-    else if (/\/\/+/.test(key)) {
+    } else if (/\/\/+/.test(key)) {
         throw new TypeError('key should not contain consecutive forward slashes (/).');
-    }
-    else if (/^[/\\]/.test(key) || /[/\\]$/.test(key)) {
+    } else if (/^[/\\]/.test(key) || /[/\\]$/.test(key)) {
         throw new TypeError('key should not start or end with a forward slash (/) or a backslash (\\).');
-    }
-    else if (/\/\.\.\//.test(key)) {
+    } else if (/\/\.\.\//.test(key)) {
         throw new TypeError('path in key should not contain consecutive periods (..).');
     }
 
@@ -994,7 +1006,6 @@ BosClient.prototype.getObjectToFile = function (bucketName, key, filename, range
         outputStream: fs.createWriteStream(filename)
     });
 };
-
 
 BosClient.prototype.copyObject = function (sourceBucketName, sourceKey, targetBucketName, targetKey, options) {
     /* eslint-disable */
@@ -1020,8 +1031,7 @@ BosClient.prototype.copyObject = function (sourceBucketName, sourceKey, targetBu
             return true;
         }
     });
-    options.headers['x-bce-copy-source'] = strings.normalize(util.format('/%s/%s',
-        sourceBucketName, sourceKey), false);
+    options.headers['x-bce-copy-source'] = strings.normalize(util.format('/%s/%s', sourceBucketName, sourceKey), false);
     if (u.has(options.headers, 'ETag')) {
         options.headers['x-bce-copy-source-if-match'] = options.headers.ETag;
     }
@@ -1078,24 +1088,28 @@ BosClient.prototype.completeMultipartUpload = function (bucketName, key, uploadI
     });
 };
 
-BosClient.prototype.uploadPartFromFile = function (bucketName, key, uploadId, partNumber,
-                                                   partSize, filename, offset, options) {
-
+BosClient.prototype.uploadPartFromFile = function (
+    bucketName,
+    key,
+    uploadId,
+    partNumber,
+    partSize,
+    filename,
+    offset,
+    options
+) {
     var start = offset;
     var end = offset + partSize - 1;
     var partFp = fs.createReadStream(filename, {
         start: start,
         end: end
     });
-    return this.uploadPart(bucketName, key, uploadId, partNumber,
-        partSize, partFp, options);
+    return this.uploadPart(bucketName, key, uploadId, partNumber, partSize, partFp, options);
 };
 
-BosClient.prototype.uploadPartFromBlob = function (bucketName, key, uploadId, partNumber,
-                                                   partSize, blob, options) {
+BosClient.prototype.uploadPartFromBlob = function (bucketName, key, uploadId, partNumber, partSize, blob, options) {
     if (blob.size !== partSize) {
-        throw new TypeError(util.format('Invalid partSize %d and data length %d',
-            partSize, blob.size));
+        throw new TypeError(util.format('Invalid partSize %d and data length %d', partSize, blob.size));
     }
 
     var headers = {};
@@ -1118,13 +1132,18 @@ BosClient.prototype.uploadPartFromBlob = function (bucketName, key, uploadId, pa
     });
 };
 
-BosClient.prototype.uploadPartFromDataUrl = function (bucketName, key, uploadId, partNumber,
-                                                      partSize, dataUrl, options) {
-
+BosClient.prototype.uploadPartFromDataUrl = function (
+    bucketName,
+    key,
+    uploadId,
+    partNumber,
+    partSize,
+    dataUrl,
+    options
+) {
     var data = new Buffer(dataUrl, 'base64');
     if (data.length !== partSize) {
-        throw new TypeError(util.format('Invalid partSize %d and data length %d',
-            partSize, data.length));
+        throw new TypeError(util.format('Invalid partSize %d and data length %d', partSize, data.length));
     }
 
     var headers = {};
@@ -1147,9 +1166,7 @@ BosClient.prototype.uploadPartFromDataUrl = function (bucketName, key, uploadId,
     });
 };
 
-BosClient.prototype.uploadPart = function (bucketName, key, uploadId, partNumber,
-                                           partSize, partFp, options) {
-
+BosClient.prototype.uploadPart = function (bucketName, key, uploadId, partNumber, partSize, partFp, options) {
     /* eslint-disable */
     if (!bucketName) {
         throw new TypeError('bucketName should not be empty');
@@ -1159,8 +1176,14 @@ BosClient.prototype.uploadPart = function (bucketName, key, uploadId, partNumber
     }
     /* eslint-enable */
     if (partNumber < MIN_PART_NUMBER || partNumber > MAX_PART_NUMBER) {
-        throw new TypeError(util.format('Invalid partNumber %d. The valid range is from %d to %d.',
-            partNumber, MIN_PART_NUMBER, MAX_PART_NUMBER));
+        throw new TypeError(
+            util.format(
+                'Invalid partNumber %d. The valid range is from %d to %d.',
+                partNumber,
+                MIN_PART_NUMBER,
+                MAX_PART_NUMBER
+            )
+        );
     }
 
     var client = this;
@@ -1178,11 +1201,10 @@ BosClient.prototype.uploadPart = function (bucketName, key, uploadId, partNumber
     options = u.extend(headers, options);
 
     if (!options[H.CONTENT_MD5]) {
-        return crypto.md5stream(partFp)
-            .then(function (md5sum) {
-                options[H.CONTENT_MD5] = md5sum;
-                return newPromise();
-            });
+        return crypto.md5stream(partFp).then(function (md5sum) {
+            options[H.CONTENT_MD5] = md5sum;
+            return newPromise();
+        });
     }
 
     function newPromise() {
@@ -1203,8 +1225,16 @@ BosClient.prototype.uploadPart = function (bucketName, key, uploadId, partNumber
     return newPromise();
 };
 
-BosClient.prototype.uploadPartCopy = function (sourceBucket, sourceKey, targetBucket, targetKey,
-                                            uploadId, partNumber, range, options) {
+BosClient.prototype.uploadPartCopy = function (
+    sourceBucket,
+    sourceKey,
+    targetBucket,
+    targetKey,
+    uploadId,
+    partNumber,
+    range,
+    options
+) {
     if (!sourceBucket) {
         throw new TypeError('sourceBucket should not be empty');
     }
@@ -1218,8 +1248,14 @@ BosClient.prototype.uploadPartCopy = function (sourceBucket, sourceKey, targetBu
         throw new TypeError('targetKey should not be empty');
     }
     if (partNumber < MIN_PART_NUMBER || partNumber > MAX_PART_NUMBER) {
-        throw new TypeError(util.format('Invalid partNumber %d. The valid range is from %d to %d.',
-            partNumber, MIN_PART_NUMBER, MAX_PART_NUMBER));
+        throw new TypeError(
+            util.format(
+                'Invalid partNumber %d. The valid range is from %d to %d.',
+                partNumber,
+                MIN_PART_NUMBER,
+                MAX_PART_NUMBER
+            )
+        );
     }
 
     options = this._checkOptions(options || {});
@@ -1233,7 +1269,7 @@ BosClient.prototype.uploadPartCopy = function (sourceBucket, sourceKey, targetBu
         config: options.config,
         params: {partNumber: partNumber, uploadId: uploadId}
     });
-}
+};
 
 BosClient.prototype.listParts = function (bucketName, key, uploadId, options) {
     /* eslint-disable */
@@ -1334,7 +1370,7 @@ BosClient.prototype.appendObjectFromFile = function (bucketName, key, filename, 
     // append的起止位置应该在文件内
     var fileSize = fs.statSync(filename).size;
     if (size + offset > fileSize) {
-        throw new Error('Can\'t read the content beyond the end of file.');
+        throw new Error("Can't read the content beyond the end of file.");
     }
 
     headers[H.CONTENT_LENGTH] = size;
@@ -1353,11 +1389,10 @@ BosClient.prototype.appendObjectFromFile = function (bucketName, key, filename, 
     if (!u.has(options, H.CONTENT_MD5)) {
         var me = this;
         var fp2 = fs.createReadStream(filename, streamOptions);
-        return crypto.md5stream(fp2)
-            .then(function (md5sum) {
-                options[H.CONTENT_MD5] = md5sum;
-                return me.appendObject(bucketName, key, fp, offset, options);
-            });
+        return crypto.md5stream(fp2).then(function (md5sum) {
+            options[H.CONTENT_MD5] = md5sum;
+            return me.appendObject(bucketName, key, fp, offset, options);
+        });
     }
 
     return this.appendObject(bucketName, key, fp, offset, options);
@@ -1399,8 +1434,7 @@ BosClient.prototype.postObject = function (bucketName, key, data, options) {
 
     if (u.isString(data)) {
         data = fs.readFileSync(data);
-    }
-    else if (!Buffer.isBuffer(data)) {
+    } else if (!Buffer.isBuffer(data)) {
         throw new Error('Invalid data type.');
     }
 
@@ -1487,8 +1521,8 @@ BosClient.prototype.restoreObject = function (bucketName, objectName, options) {
         params: {restore: ''},
         headers: options.headers,
         config: options.config
-    })
-}
+    });
+};
 
 /**
  * 获取软连接，需要对软连接有读取权限，接口响应头的x-bce-symlink-target指向目标文件
@@ -1502,7 +1536,7 @@ BosClient.prototype.getSymlink = function (bucketName, objectName, options) {
         params: {symlink: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 为BOS的相同bucket下已有的目的object创建软链接
@@ -1529,8 +1563,7 @@ BosClient.prototype.putSymlink = function (bucketName, objectName, target, overw
         headers: headers,
         config: options.config
     });
-}
-
+};
 
 /**
  * 设置用户的Quota
@@ -1552,7 +1585,7 @@ BosClient.prototype.putUserQuota = function (body, options) {
         body: JSON.stringify(body),
         config: options.config
     });
-}
+};
 
 /**
  * 获取用户的Quota
@@ -1564,7 +1597,7 @@ BosClient.prototype.getUserQuota = function (options) {
         params: {userQuota: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 删除额度设置
@@ -1576,7 +1609,7 @@ BosClient.prototype.deleteUserQuota = function (options) {
         params: {userQuota: ''},
         config: options.config
     });
-}
+};
 
 /**
  * 从指定url抓取资源
@@ -1607,7 +1640,7 @@ BosClient.prototype.fetchObject = function (bucketName, objectName, options) {
         headers: headers,
         config: options.config
     });
-}
+};
 
 /**
  * 浏览器在发送跨域请求之前会发送一个preflight请求（OPTIONS）并带上特定的来源域, OPTIONS Object操作不需要进行鉴权。
@@ -1638,7 +1671,7 @@ BosClient.prototype.optionsObject = function (bucketName, objectName, options) {
         headers: headers,
         config: options.config
     });
-}
+};
 
 /**
  * 向Bucket中指定object执行SQL语句，选取出指定内容返回
@@ -1668,8 +1701,7 @@ BosClient.prototype.selectObject = function (bucketName, objectName, body, optio
         headers: options.headers,
         config: options.config
     });
-}
-
+};
 
 // --- E N D ---
 BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
@@ -1684,10 +1716,11 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
     };
     const endpoint = this.config.endpoint;
     // 使用的是自定义域名 / virtual-host
-    if (this.config.cname_enabled || domainUtils.isCnameLikeHost(endpoint)) {
+    if (domainUtils.isCnameLikeHost(endpoint) || this.config.cname_enabled) {
         // if virtual host endpoint and bucket is not empty, compatible bucket and endpoint
-        if (domainUtils.needCompatibleBucketAndEndpoint(varArgs.bucketName, endpoint)) {
-            this.config.endpoint = domainUtils.replaceEndpointByBucket(varArgs.bucketName, endpoint);
+        if (domainUtils.needCompatibleBucketAndEndpoint(bucketName, endpoint)) {
+            // bucket from api and from endpoint is different
+            this.config.endpoint = domainUtils.replaceEndpointByBucket(bucketName, endpoint);
         }
     }
     else {
@@ -1696,8 +1729,7 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
         if (!this.config.pathStyleEnable && !domainUtils.isIpHost(endpoint)) {
             if (domainUtils.isBosHost(endpoint)) {
                 const {protocal, host} = domainUtils.getDomainWithoutProtocal(endpoint);
-                const bucketName = varArgs.bucketName || '';
-                this.config.endpoint = protocal + (bucketName ? bucketName + '.' : '') + host;
+                this.config.endpoint = protocal + bucketName + '.' + host;
             }
         }
     }
@@ -1705,11 +1737,17 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
     var args = u.extend(defaultArgs, varArgs);
 
     var config = u.extend({}, this.config, args.config);
-    var resource = requestUrl || path.normalize(path.join(
-        args.removeVersionPrefix ? '/' : '/v1',
-        (/\.[\w\-]+\.bcebos\.com$/.test(config.endpoint) && !this.config.cname_enabled)? '' : strings.normalize(args.bucketName || ''),
-        strings.normalize(args.key || '', false)
-    )).replace(/\\/g, '/');
+    var resource = 
+        requestUrl || 
+        path
+            .normalize(
+                path.join(
+                    args.removeVersionPrefix ? '/' : '/v1',
+                    strings.normalize(args.bucketName || ''),
+                    strings.normalize(args.key || '', false)
+            )
+        )
+        .replace(/\\/g, '/');
 
     if (config.sessionToken) {
         args.headers[H.SESSION_TOKEN] = config.sessionToken;
@@ -1737,7 +1775,7 @@ BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, conf
     var client = this;
 
     function doRequest() {
-        var agent = this._httpAgent = new HttpClient(config);
+        var agent = (this._httpAgent = new HttpClient(config));
         var httpContext = {
             httpMethod: httpMethod,
             resource: resource,
@@ -1750,8 +1788,13 @@ BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, conf
             });
         });
 
-        var promise = this._httpAgent.sendRequest(httpMethod, resource, args.body,
-            args.headers, args.params, u.bind(this.createSignature, this),
+        var promise = this._httpAgent.sendRequest(
+            httpMethod,
+            resource,
+            args.body,
+            args.headers,
+            args.params,
+            u.bind(this.createSignature, this),
             args.outputStream
         );
 
@@ -1771,7 +1814,6 @@ BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, conf
         return promise;
     }
 
-
     const instance = doRequest.call(client);
     const result = instance.catch(function (err) {
         var serverTimestamp = new Date(err[H.X_BCE_DATE]).getTime();
@@ -1786,9 +1828,9 @@ BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, conf
     });
 
     if (config.requestInstance) {
-      return [result, instance];
+        return [result, instance];
     }
-    return result
+    return result;
 };
 
 BosClient.prototype._checkOptions = function (options, allowedParams) {
@@ -1806,7 +1848,7 @@ BosClient.prototype._checkOptions = function (options, allowedParams) {
                 u: Base64.urlEncode(options.callback.urls),
                 /** mode, 缩写为u */
                 m: 'sync',
-                v: Base64.urlEncode(options.callback.vars),
+                v: Base64.urlEncode(options.callback.vars)
             },
             /** encrypt, 缩写为e */
             options.callback.encrypt && options.callback.encrypt === 'config' ? {e: 'config'} : {},
@@ -1817,8 +1859,8 @@ BosClient.prototype._checkOptions = function (options, allowedParams) {
         const callbackKeys = Object.keys(callbackParams);
 
         callbackKeys.forEach((key, index) => {
-            callbackStr += key + '_' + callbackParams[key] + (index === callbackKeys.length - 1 ? '' : ',')
-        })
+            callbackStr += key + '_' + callbackParams[key] + (index === callbackKeys.length - 1 ? '' : ',');
+        });
 
         if (callbackStr) {
             rv.headers[H.X_BCE_PROCESS] = 'callback/callback,' + callbackStr;
@@ -1866,8 +1908,7 @@ BosClient.prototype._prepareObjectHeaders = function (options) {
     var headers = u.pick(options, function (value, key) {
         if (allowedHeaders.indexOf(key) !== -1) {
             return true;
-        }
-        else if (/^x\-bce\-meta\-/.test(key)) {
+        } else if (/^x\-bce\-meta\-/.test(key)) {
             metaSize += Buffer.byteLength(key) + Buffer.byteLength('' + value);
             return true;
         }
@@ -1881,10 +1922,11 @@ BosClient.prototype._prepareObjectHeaders = function (options) {
         var contentLength = headers[H.CONTENT_LENGTH];
         if (contentLength < 0) {
             throw new TypeError('content_length should not be negative.');
-        }
-        else if (contentLength > MAX_PUT_OBJECT_LENGTH) { // 5G
-            throw new TypeError('Object length should be less than ' + MAX_PUT_OBJECT_LENGTH
-                + '. Use multi-part upload instead.');
+        } else if (contentLength > MAX_PUT_OBJECT_LENGTH) {
+            // 5G
+            throw new TypeError(
+                'Object length should be less than ' + MAX_PUT_OBJECT_LENGTH + '. Use multi-part upload instead.'
+            );
         }
     }
 
@@ -1932,14 +1974,95 @@ BosClient.prototype._prepareObjectHeaders = function (options) {
 BosClient.prototype.createFolderShareUrl = function (body, config) {
     const endpoint = this.config.endpoint.replace(/^https?\:\/\//, '');
     return this.sendRequest(
-        "POST",
+        'POST',
         {
-            body: JSON.stringify(u.extend({ endpoint: endpoint }, body)),
-            config: u.extend({ protocol: "https" }, config),
-            params: { action: 'urlGet' }
+            body: JSON.stringify(u.extend({endpoint: endpoint}, body)),
+            config: u.extend({protocol: 'https'}, config),
+            params: {action: 'urlGet'}
         },
-        "https://bos-share.baidubce.com/"
+        'https://bos-share.baidubce.com/'
     );
+};
+
+/**
+ * 进度回调函数
+ *
+ * @callback progressCallback
+ * @param {Object} options 回调参数
+ * @param {string} options.speed 当前上传速度
+ * @param {string} options.progress 当前上传进度
+ * @param {string} options.percent 当前上传进度-百分比
+ * @param {number} options.uploadedBytes 已上传字节数
+ * @param {number} options.totalBytes 文件总字节数
+ */
+
+/**
+ * 进度回调函数
+ *
+ * @callback stateChangeCallback
+ * @param {string} state 状态
+ * @param {string} options.message 回调数据
+ * @param {Object} options.data 回调数据
+ */
+
+/**
+ * 自适应分片上传文件
+ *
+ * @param {Object} params 参数
+ * @param {string} params.bucketName 存储桶名称
+ * @param {string} params.objectName 上传后对象名称
+ * @param {string|Buffer|Blob} params.data 上传数据, 类型为string时表示文件路径
+ * @param {number} [params.chunkSize=5*1024**2] 默认分片大小, 单位为bytes
+ * @param {number} [params.partConcurrency=5] 分片并发数
+ * @param {string} [params.StorageClass=STANDARD] 存储类型
+ * @param {string=} params.ContentLength 文件大小
+ * @param {string=} params.ContentType MimeType
+ * @param {string=} params.createTime 任务创建时间
+ * @param {string=} params.uploadId 上传ID, 如果存在则表示任务已经初始化
+ * @param {progressCallback=} params.onProgress 上传进度回调函数
+ * @param {stateChangeCallback=} param.onStateChange 状态变化回调函数
+ */
+BosClient.prototype.putSuperObject = function (params) {
+    params = params || {};
+    const {objectName, data} = params;
+    /** 上传文件的最大体积, 单位为bytes */
+    const MAX_UPLOAD_FILE_SIZE = 48.8 * 1024 ** 4;
+    // 上传后文件媒体类型
+    const ContentType = params.ContentType || MimeType.guess(path.extname(objectName));
+    // 文件大小, 单位bytes
+    let ContentLength = params.ContentLength;
+    // 数据类型: File, Buffer, Stream, Blob
+    let dataType = '';
+
+    if (typeof data === 'string') {
+        ContentLength = fs.lstatSync(data).size;
+        dataType = 'File';
+    } else if (Buffer.isBuffer(data)) {
+        ContentLength = data.length;
+        dataType = 'Buffer';
+    } else if (typeof stream === 'function' && data instanceof stream.Readable) {
+        dataType = 'Stream';
+    } else if (typeof Blob !== 'undefined' && data instanceof Blob) {
+        ContentLength = data.size;
+        dataType = 'Blob';
+    }
+
+    if (!dataType) {
+        throw new Error(`Unsupported data type: ${dataType}`);
+    }
+
+    if (ContentLength > MAX_UPLOAD_FILE_SIZE) {
+        throw new Error('File size should be less or equal than 48.8TB.');
+    }
+
+    if (dataType === 'Stream') {
+        throw new Error('file type is Stream, please use `putObject` API.');
+    }
+
+    const self = this;
+    const instance = new SuperUpload(self, u.extend(params, {ContentLength, ContentType, dataType}));
+
+    return instance;
 };
 
 module.exports = BosClient;

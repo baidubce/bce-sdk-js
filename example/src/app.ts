@@ -9,6 +9,8 @@ import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUI from 'swagger-ui-express';
 import jwt from 'jsonwebtoken';
 import type {VerifyErrors, JwtPayload} from 'jsonwebtoken';
+// @ts-ignore
+import logger from 'debug';
 
 import {jwtSecretKey, jwtAlgorithm} from './config';
 import {PORT} from './config';
@@ -16,16 +18,29 @@ import {PORT} from './config';
 import sdk from '../../index';
 import SwaggerOptions from './swagger';
 import BucketRouter from './routes/Bucket';
+import ObjectRouter from './routes/Object';
 
-const app = express();
+export const app = express();
 const swaggerSpec = swaggerJSDoc(SwaggerOptions);
 
 /** 静态资源 */
 app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.static(path.join(__dirname, '../node_modules/amis/sdk')));
+app.use(express.static(path.join(__dirname, '../../dist')));
+
+/** 日志 */
+export const debug = logger('bce-sdk:app');
 
 /** 请求中间件 */
-app.use(cors({origin: '*', credentials: false}));
+app.use(
+  cors({
+    origin: ['http://localhost:30001'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    credentials: true
+  })
+);
 app.use(
   bodyParser.urlencoded({
     extended: true
@@ -38,14 +53,19 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 /** 全局拦截器 */
 app.use((req, res, next) => {
-  const token = req.cookies['token'];
+  const token = req.cookies['token'] || req.headers['x-token'];
 
   if (req.url === '/login' || req.url === '/api/login') {
     next();
   } else {
+    const referrer = req.get('Referrer');
     if (!token) {
-      console.log('Authentication Token not found and redirect to login page.');
-      return res.redirect('/login');
+      if (referrer) {
+        return res.status(301).json({redirect: referrer + 'login'});
+      } else {
+        console.log('Authentication Token not found and redirect to login page.');
+        return res.redirect('/login');
+      }
     }
 
     // @ts-ignore
@@ -79,8 +99,7 @@ app.post('/api/login', (req, res) => {
     },
     jwtSecretKey,
     {
-      algorithm: jwtAlgorithm,
-      expiresIn: '90 days'
+      algorithm: jwtAlgorithm
     }
   );
 
@@ -88,8 +107,14 @@ app.post('/api/login', (req, res) => {
   return res.status(200).json({token, status: 0, message: 'Login Successfully'});
 });
 
+/** 分片上传测试 */
+app.use('/super-upload', express.static(path.join(__dirname, '../public/super-upload.html')));
+
 /** API路由 */
 app.use('/', BucketRouter);
+app.use('/', ObjectRouter);
+
+/** 接口调试文档 */
 app.use(
   '/api-docs',
   swaggerUI.serve,

@@ -21,6 +21,8 @@ var u = require('underscore');
 var Q = require('q');
 var debug = require('debug')('bce-sdk:helper');
 var strings = require('./strings');
+var url = require('url');
+var net = require('net');
 
 // 超过这个限制就开始分片上传
 var MIN_MULTIPART_SIZE = 5 * 1024 * 1024; // 5M
@@ -223,10 +225,10 @@ function getTasks(data, uploadId, bucket, object, size, partSize) {
  * @returns 
  */
 const getDomainWithoutProtocal = function(host) {
-    const idx = host.indexOf('://');
+    const url = new URL(host);
     return {
-        protocal: !!~idx ? host.slice(0, idx + 3) : '',
-        host: !!~idx ? host.slice(idx + 3) : host
+        protocal: url.protocal,
+        host: url.host
     };
 }
 
@@ -235,75 +237,66 @@ const getDomainWithoutProtocal = function(host) {
  * @param {string} host 
  * @return {string} 
  */
-function _getDomainWithoutPort(originHost)  {
-    const {host} = getDomainWithoutProtocal(originHost);
-    if (!host.includes(':')) {
-        return host;
-    }
+function _getHostname(originHost)  {
+    const url = new URL(originHost);
 	
-	return host.slice(0, host.indexOf(':'));
+	return url.hostname;
 }
 
-// 判断是否为virutal host
+// virutal host：<bucket>.<region>.bcebos.com
+// custom domain return false
 const isVirtualHost = function (host) {
-    const domain = _getDomainWithoutPort(host)
+    const domain = _getHostname(host)
     const arr = domain.split(".");
     if (arr.length !== 4) {
         return false
     }
-    // bucket max length is 64
-    if (arr[0].length === 0 || arr[0].length > 64) {
+    // bucketName rule: 只能包含小写字母、数字和“-”，开头结尾为小写字母和数字，长度在4-63之间
+    // ends with bcebos.com
+    if (!/^[a-z\d][a-z-\d]{2,61}[a-z\d]\.[a-z\d]+\.bcebos\.com$/.test(arr[0])) {
         return false
     }
-    if (arr[2] != "bcebos" || arr[3] != "com") {
-        return false
-    }
+
     return true;
 }
 
 // 判断是否为ip host
 const isIpHost = function (host) {
-    const domain = _getDomainWithoutPort(host)
-    const arr = domain.split(".");
-    if (arr.length !== 4) {
-        return false
-    }
-    // bucket max length is 64
-    if (arr[0].length == 0 || arr[0].length > 64) {
-        return false
-    }
-    if (arr[2] != "bcebos" || arr[3] != "com") {
-        return false
-    }
-    return true;
+    const domain = _getHostname(host)
+    return net.isIP(input) > 0;
 }
 
-// 判断是否为bos默认官方 host
+// 判断是否为bos默认官方 host 
 const isBosHost = function(host)  {
-	const domain = _getDomainWithoutPort(host);
+	const domain = _getHostname(host);
     const arr = domain.split(".");
     if (arr.length !== 3) {
         return false;
     }
-    if (arr[1] !== "bcebos" || arr[2] !== "com") {
+    if (/\.bcebos\.com$/.test(domain)) {
         return false;
     }
 	return true
 }
 
+// CDN域名 ｜ virtualHost
 const isCnameLikeHost = function(host) {
-	const result = DEFAULT_CNAME_LIKE_LIST
-                    .map((suffix) => strings.hasSuffix(host.toLowerCase(), suffix))
-                    .filter(item => item);
-
-	return result.length;
+    // CDN加速 <xxx>.cdn.bcebos.com
+	if(DEFAULT_CNAME_LIKE_LIST.some((suffix) => strings.hasSuffix(host.toLowerCase(), suffix))) {
+        return true;
+    }
+    // virtual host
+    if (isVirtualHost(host)) {
+		return true
+	}
+	return false
 }
 
 const needCompatibleBucketAndEndpoint = function(bucket, endpoint) {
 	if (!bucket || bucket === "") {
 		return false
 	}
-    // 自定义域名
+    // virtual host
 	if (!isVirtualHost(endpoint)) {
 		return false
 	}
@@ -312,6 +305,8 @@ const needCompatibleBucketAndEndpoint = function(bucket, endpoint) {
 		return false
 	}
 	// bucket from api and from endpoint is different
+    // bucket = AAAA，endpoint = BBBB.bcebos.com
+    // if like so, just pass to server and it will handle
 	return true
 }
 

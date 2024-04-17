@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 1.0.1-beta.3
+
+- patch `process` package to dependencies
+
+## 1.0.1-beta.2
+
+- BosClient: add `putSuperObject` API (encapsulation for mutipart upload)
+
 ## 1.0.1-beta.1
 
 _published on 2024-01-08_
@@ -19,12 +27,12 @@ Approach 1:
 ```javascript
 try {
   const res = await client.putObjectFromString('bucketName', 'fileName', 'demo-string', {
-      callback: {
-        urls: ["https://www.test.com/callback"],
-        vars: {name: 'baidu'},
-        encrypt: 'config',
-        key: 'callback1'
-      }
+    callback: {
+      urls: ['https://www.test.com/callback'],
+      vars: {name: 'baidu'},
+      encrypt: 'config',
+      key: 'callback1'
+    }
   });
 
   /* callback result */
@@ -44,7 +52,7 @@ Approach 2:
 ```javascript
 try {
   const res = await client.putObjectFromString('bucketName', 'fileName', 'demo-string', {
-      'x-bce-process': 'callback/callback,u_WyJodHRwczovL3d3dy50ZXN0LmNvbS9jYWxsYmFjayJd,m_sync,v_eyJuYW1lIjoiYmFpZHUifQ'
+    'x-bce-process': 'callback/callback,u_WyJodHRwczovL3d3dy50ZXN0LmNvbS9jYWxsYmFjayJd,m_sync,v_eyJuYW1lIjoiYmFpZHUifQ'
   });
 
   /* callback result */

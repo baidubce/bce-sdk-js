@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 
-router.get('/listBuckets', async (req, res) => {
+router.get('/api/listBuckets', async (req, res) => {
   const client = res.locals.client;
 
   try {
@@ -13,7 +13,7 @@ router.get('/listBuckets', async (req, res) => {
   }
 });
 
-router.put('/createBucket', async (req, res) => {
+router.put('/api/createBucket', async (req, res) => {
   const client = res.locals.client;
   const {bucketName, enableMultiAZ} = req.body;
 

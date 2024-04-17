@@ -38,7 +38,14 @@
             {
               type: 'form',
               mode: 'normal',
-              api: '/api/login',
+              api: {
+                method: 'post',
+                url: '/api/login',
+                adaptor: function (payload, response, api, context) {
+                  sessionStorage.setItem('__token__', response.data.token);
+                  return {...payload};
+                }
+              },
               redirect: '/api-docs',
               persistData: 'bosclient-sdk-config',
               style: {
@@ -60,13 +67,13 @@
                     <span class='label label-info'>\${label}</span>
                   </div>`,
                   options: [
-                    {value: 'https://bj.bcebos.com', label: '北京'},
-                    {value: 'https://bd.bcebos.com', label: '保定'},
-                    {value: 'https://su.bcebos.com', label: '苏州'},
-                    {value: 'https://gz.bcebos.com', label: '广州'},
-                    {value: 'https://hkg.bcebos.com', label: '中国香港'},
-                    {value: 'https://fwh.bcebos.com', label: '金融华中 - 武汉'},
-                    {value: 'https://fsh.bcebos.com', label: '华东 - 上海'}
+                    {value: 'http://bj.bcebos.com', label: '北京'},
+                    {value: 'http://bd.bcebos.com', label: '保定'},
+                    {value: 'http://su.bcebos.com', label: '苏州'},
+                    {value: 'http://gz.bcebos.com', label: '广州'},
+                    {value: 'http://hkg.bcebos.com', label: '中国香港'},
+                    {value: 'http://fwh.bcebos.com', label: '金融华中 - 武汉'},
+                    {value: 'http://fsh.bcebos.com', label: '华东 - 上海'}
                   ]
                 },
                 {
@@ -91,7 +98,10 @@
                     maxLength: 32
                   }
                 }
-              ]
+              ],
+              onFinished: values => {
+                sessionStorage.setItem('_sdk_config_', JSON.stringify(values));
+              }
             }
           ]
         };
@@ -99,12 +109,4 @@
       })();
     </script>
   </body>
-  <script>
-    function login() {
-      const endpoint = document.getElementById('endpoint')?.value;
-      const ak = document.getElementById('ak')?.value;
-      const sk = document.getElementById('sk')?.value;
-      console.log({endpoint, sk, ak});
-    }
-  </script>
 </html>

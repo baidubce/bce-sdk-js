@@ -18,7 +18,7 @@
 /* eslint max-params:[0,10] */
 /* globals ArrayBuffer */
 
-var process = require('process');
+var process = require('process/'); // use dev dep https://github.com/browserify/browserify/issues/1986
 var http = require('http');
 var https = require('https');
 var util = require('util');
@@ -69,22 +69,23 @@ util.inherits(HttpClient, EventEmitter);
  *
  * @return {Q.defer}
  */
-HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, params,
-                                             signFunction, outputStream) {
+HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, params, signFunction, outputStream) {
     httpMethod = httpMethod.toUpperCase();
     var requestUrl = this._getRequestUrl(path, params);
     var options = require('url').parse(requestUrl);
-    debug('httpMethod = %s, requestUrl = %s, options = %j',
-        httpMethod, requestUrl, options);
+    debug('httpMethod = %s, requestUrl = %s, options = %j', httpMethod, requestUrl, options);
 
     // Prepare the request headers.
     var defaultHeaders = {};
     if (typeof navigator === 'object' && navigator.userAgent) {
         defaultHeaders[H.USER_AGENT] = navigator.userAgent;
-    }
-    else {
-        defaultHeaders[H.USER_AGENT] = util.format('bce-sdk-nodejs/%s/%s/%s', require('../package.json').version,
-            process.platform, process.version);
+    } else {
+        defaultHeaders[H.USER_AGENT] = util.format(
+            'bce-sdk-nodejs/%s/%s/%s',
+            require('../package.json').version,
+            process.platform,
+            process.version
+        );
     }
     defaultHeaders[H.X_BCE_DATE] = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
     defaultHeaders[H.CONNECTION] = 'close';
@@ -133,15 +134,12 @@ HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, pa
                 debug('options = %j', options);
                 return client._doRequest(options, body, outputStream);
             });
-        }
-        else if (typeof promise === 'string') {
+        } else if (typeof promise === 'string') {
             headers[H.AUTHORIZATION] = promise;
-        }
-        else {
+        } else {
             throw new Error('Invalid signature = (' + promise + ')');
         }
-    }
-    else {
+    } else {
         headers[H.AUTHORIZATION] = createSignature(this.config.credentials, httpMethod, path, params, headers);
     }
 
@@ -167,9 +165,8 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
     var api = options.protocol === 'https:' ? https : http;
     var client = this;
 
-    var req = client._req = api.request(options, function (res) {
-        if (client._isValidStatus(res.statusCode) && outputStream
-            && outputStream instanceof stream.Writable) {
+    var req = (client._req = api.request(options, function (res) {
+        if (client._isValidStatus(res.statusCode) && outputStream && outputStream instanceof stream.Writable) {
             res.pipe(outputStream);
             outputStream.on('finish', function () {
                 deferred.resolve(success(client._fixHeaders(res.headers), {}));
@@ -180,7 +177,7 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
             return;
         }
         deferred.resolve(client._recvResponse(res));
-    });
+    }));
 
     // 设置超时10s
     // if (typeof req.setTimeout === 'function') {
@@ -197,9 +194,13 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
 
     if (req.xhr && typeof req.xhr.upload === 'object') {
         u.each(['progress', 'error', 'abort', 'timeout'], function (eventName) {
-            req.xhr.upload.addEventListener(eventName, function (evt) {
-                client.emit(eventName, evt);
-            }, false);
+            req.xhr.upload.addEventListener(
+                eventName,
+                function (evt) {
+                    client.emit(eventName, evt);
+                },
+                false
+            );
         });
     }
 
@@ -209,8 +210,7 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
 
     try {
         client._sendRequest(req, body);
-    }
-    catch (ex) {
+    } catch (ex) {
         deferred.reject(ex);
     }
     return deferred.promise;
@@ -225,19 +225,15 @@ HttpClient.prototype._generateRequestId = function () {
         return v;
     }
 
-    return util.format('%s%s-%s-%s-%s-%s%s%s',
-        chunk(), chunk(), chunk(), chunk(),
-        chunk(), chunk(), chunk(), chunk());
+    return util.format('%s%s-%s-%s-%s-%s%s%s', chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk());
 };
 
 HttpClient.prototype._guessContentLength = function (data) {
     if (data == null) {
         return 0;
-    }
-    else if (typeof data === 'string') {
+    } else if (typeof data === 'string') {
         return Buffer.byteLength(data);
-    }
-    else if (typeof data === 'object') {
+    } else if (typeof data === 'object') {
         if (typeof Blob !== 'undefined' && data instanceof Blob) {
             return data.size;
         }
@@ -251,8 +247,7 @@ HttpClient.prototype._guessContentLength = function (data) {
          if (typeof FormData !== 'undefined' && data instanceof FormData) {
          }
          */
-    }
-    else if (Buffer.isBuffer(data)) {
+    } else if (Buffer.isBuffer(data)) {
         return data.length;
     }
 
@@ -287,9 +282,7 @@ HttpClient.prototype._recvResponse = function (res) {
 
         if (!raw.length) {
             return {};
-        }
-        else if (contentType
-            && /(application|text)\/json/.test(contentType)) {
+        } else if (contentType && /(application|text)\/json/.test(contentType)) {
             return JSON.parse(raw.toString());
         }
         return raw;
@@ -302,8 +295,7 @@ HttpClient.prototype._recvResponse = function (res) {
     res.on('data', function (chunk) {
         if (Buffer.isBuffer(chunk)) {
             payload.push(chunk);
-        }
-        else {
+        } else {
             // xhr2返回的内容是 string，不是 Buffer，导致 Buffer.concat 的时候报错了
             payload.push(new Buffer(chunk));
         }
@@ -319,8 +311,7 @@ HttpClient.prototype._recvResponse = function (res) {
         try {
             debug('responseHeaders = %j', responseHeaders);
             responseBody = parseHttpResponseBody(raw);
-        }
-        catch (e) {
+        } catch (e) {
             debug('statusCode = %s, Parse response body error = %s', statusCode, e.message);
             deferred.reject(failure(statusCode, e.message));
             return;
@@ -328,13 +319,18 @@ HttpClient.prototype._recvResponse = function (res) {
 
         if (statusCode >= 100 && statusCode < 200) {
             deferred.reject(failure(statusCode, 'Can not handle 1xx http status code.'));
-        }
-        else if (statusCode < 100 || statusCode >= 300) {
+        } else if (statusCode < 100 || statusCode >= 300) {
             if (responseBody.requestId) {
-                deferred.reject(failure(statusCode, responseBody.message,
-                    responseBody.code, responseBody.requestId, responseHeaders.date));
-            }
-            else {
+                deferred.reject(
+                    failure(
+                        statusCode,
+                        responseBody.message,
+                        responseBody.code,
+                        responseBody.requestId,
+                        responseHeaders.date
+                    )
+                );
+            } else {
                 deferred.reject(failure(statusCode, responseBody));
             }
         }
@@ -373,8 +369,7 @@ HttpClient.prototype._sendRequest = function (req, data) {
     if (Buffer.isBuffer(data) || isXHR2Compatible(data)) {
         req.write(data);
         req.end();
-    }
-    else if (data instanceof stream.Readable) {
+    } else if (data instanceof stream.Readable) {
         if (!data.readable) {
             throw new Error('stream is not readable');
         }
@@ -385,8 +380,7 @@ HttpClient.prototype._sendRequest = function (req, data) {
         data.on('end', function () {
             req.end();
         });
-    }
-    else {
+    } else {
         throw new Error('Invalid body type = ' + typeof data);
     }
 };
@@ -441,4 +435,3 @@ function failure(statusCode, message, code, requestId, xBceDate) {
 }
 
 module.exports = HttpClient;
-

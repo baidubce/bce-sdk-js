@@ -1,6 +1,6 @@
 {
   "name": "@baiducloud/sdk",
-  "version": "1.0.1-beta.1",
+  "version": "1.0.1-beta.3",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "browser": {
@@ -13,6 +13,7 @@
   "scripts": {
     "test": "./test/run-all.sh",
     "version": "node scripts/version.js",
+    "build": "node scripts/build.js",
     "pack": "rm -rf dist/ && mkdir dist && browserify index.js -s baidubce.sdk -o dist/baidubce-sdk.bundle.js && uglifyjs dist/baidubce-sdk.bundle.js --compress --mangle -o dist/baidubce-sdk.bundle.min.js",
     "docs": "cd example && npm run start",
     "publish:bos": "node ./publish/publish_to_bos.js"
@@ -29,18 +30,31 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "async": "^2.6.1",
+    "@nodelib/fs.walk": "^2.0.0",
+    "async": "^3.2.5",
+    "dayjs": "^1.11.10",
     "debug": "^3.1.0",
+    "filesize": "^10.1.0",
+    "lodash": "^4.17.21",
+    "process": "^0.11.10",
     "q": "^1.5.1",
     "underscore": "^1.9.1",
     "urlencode": "^1.1.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/plugin-transform-async-to-generator": "^7.23.3",
+    "@babel/preset-env": "^7.24.0",
+    "@types/async": "^3.2.24",
+    "@types/lodash": "^4.14.202",
+    "babelify": "^10.0.0",
     "browserify": "10.2.6",
+    "chalk": "^4.1.2",
     "coveralls": "^3.0.2",
     "expect.js": "^0.3.1",
-    "fs-walk": "0.0.2",
     "istanbul": "^0.4.5",
-    "mocha": "^5.2.0"
+    "mocha": "^5.2.0",
+    "rimraf": "^5.0.5",
+    "uglify-js": "^3.17.4"
   }
 }
