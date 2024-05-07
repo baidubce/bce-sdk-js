@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.0.1-beta.4
+
+_published on 2024-05-07_
+
+- BosClient: Support the `createSignature` method in `BceConfig` for customizing the generation of authentication signatures (Authorization)."
+
 ## 1.0.1-beta.3
 
 - patch `process` package to dependencies

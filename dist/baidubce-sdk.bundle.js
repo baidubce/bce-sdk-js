@@ -57365,12 +57365,13 @@ module.exports={
     "test": "test"
   },
   "scripts": {
-    "test": "./test/run-all.sh",
     "version": "node scripts/version.js",
     "build": "node scripts/build.js",
     "pack": "rm -rf dist/ && mkdir dist && browserify index.js -s baidubce.sdk -o dist/baidubce-sdk.bundle.js && uglifyjs dist/baidubce-sdk.bundle.js --compress --mangle -o dist/baidubce-sdk.bundle.min.js",
     "docs": "cd example && npm run start",
-    "publish:bos": "node ./publish/publish_to_bos.js"
+    "publish:bos": "node ./publish/publish_to_bos.js",
+    "test": "jest",
+    "test:legacy": "./test/run-all.sh"
   },
   "repository": {
     "type": "git",
@@ -57400,6 +57401,7 @@ module.exports={
     "@babel/plugin-transform-async-to-generator": "^7.23.3",
     "@babel/preset-env": "^7.24.0",
     "@types/async": "^3.2.24",
+    "@types/jest": "^29.5.12",
     "@types/lodash": "^4.14.202",
     "babelify": "^10.0.0",
     "browserify": "10.2.6",
@@ -57407,11 +57409,16 @@ module.exports={
     "coveralls": "^3.0.2",
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.5",
+    "jest": "^29.7.0",
     "mocha": "^5.2.0",
     "rimraf": "^5.0.5",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5",
     "uglify-js": "^3.17.4"
   }
 }
+
 },{}],412:[function(require,module,exports){
 "use strict";
 
@@ -57885,10 +57892,14 @@ var HttpClient = require('./http_client');
 var H = require('./headers');
 
 /**
+ * @typedef {import('./http_client.js').BceConfig} BceConfig
+ */
+
+/**
  * BceBaseClient
  *
  * @constructor
- * @param {Object} clientConfig The bce client configuration.
+ * @param {BceConfig} clientConfig The bce client configuration.
  * @param {string} serviceId The service id.
  * @param {boolean=} regionSupported The service supported region or not.
  */
@@ -58298,12 +58309,12 @@ exports.STATE = {
 
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw new Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw new Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw new Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, _toPropertyKey(descriptor.key), descriptor); } }
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); Object.defineProperty(Constructor, "prototype", { writable: false }); return Constructor; }
-function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : String(i); }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 /**
@@ -58384,53 +58395,6 @@ var SuperUpload = /*#__PURE__*/function () {
    */
   function SuperUpload(client, options) {
     _classCallCheck(this, SuperUpload);
-    /**
-     * 对未上传完成的部分进行切片
-     * 分片数量: 1 (MIN_UPLOAD_PART_COUNT) - 10000 (MAX_UPLOAD_PART_COUNT)
-     * 分片大小: 除最后一个分片外，单个分片最小支持 100 KB (MIN_UPLOAD_PART_SIZE)，最大支持 5 GB (MAX_UPLOAD_PART_SIZE)，且整个 Object 大小不超过 48.8 TB (MAX_UPLOAD_FILE_SIZE)。
-     * 分片大小可以不一样, 所以每次初始化任务时需要对未上传部分进行重新分片
-     *
-     * @param {String} uploadId 上传任务ID
-     * @param {Number} uploadedBytes 已上传字节数
-     * @param {Number} uploadedPartCount 已上传分片数量
-     * @param {Number} nextPartNum 下一个未上传的分片序号
-     */
-    _defineProperty(this, "__getMicroTasks", function (uploadId, uploadedBytes, uploadedPartCount, nextPartNum) {
-      var bucketName = this.bucketName;
-      var objectName = this.objectName;
-      var ContentLength = this.ContentLength;
-      var data = this.data;
-      var isFresh = uploadedPartCount === 0;
-
-      // 待上传总体积
-      var remainSize = ContentLength - uploadedBytes;
-      // 待上传起始字节
-      var offset = uploadedBytes;
-      // 待上传分片序号
-      var partNumber = isFresh ? 1 : nextPartNum;
-      // 分片大小
-      var chunkSize = this.__calculatePartSize(remainSize, uploadedPartCount);
-      debug('[__getMicroTasks] chunkSize: %d', chunkSize);
-      var microTasks = [];
-      while (remainSize > 0) {
-        var partSize = Math.min(remainSize, chunkSize);
-        var microTask = {
-          data: data,
-          uploadId: uploadId,
-          bucketName: bucketName,
-          objectName: objectName,
-          partNumber: partNumber,
-          partSize: partSize,
-          start: offset,
-          end: offset + partSize - 1
-        };
-        microTasks.push(microTask);
-        remainSize -= partSize;
-        offset += partSize;
-        partNumber += 1;
-      }
-      return microTasks;
-    });
     options = options || {};
     this.client = client;
     this.state = Enums.STATE.WAITING;
@@ -58527,7 +58491,7 @@ var SuperUpload = /*#__PURE__*/function () {
     value: (function () {
       var _start = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
         var _this2 = this;
-        var client, dataType, bucketName, objectName, uploadId, response, _yield$this$__listExi, parts, uploadedBytes, nextPartNum, createTime, error, _onStateChange, tasks, onStateChange;
+        var client, dataType, bucketName, objectName, uploadId, response, _onStateChange, _yield$this$__listExi, parts, uploadedBytes, nextPartNum, createTime, error, _onStateChange2, tasks, onStateChange;
         return _regeneratorRuntime().wrap(function _callee$(_context) {
           while (1) switch (_context.prev = _context.next) {
             case 0:
@@ -58545,7 +58509,7 @@ var SuperUpload = /*#__PURE__*/function () {
               debug('[start] Multipart upload ready to start: %s - %s - %s - %s - %s', bucketName, objectName, dataType, this.ContentType, this.ContentLength);
               uploadId = this.uploadId;
               if (uploadId) {
-                _context.next = 24;
+                _context.next = 27;
                 break;
               }
               _context.prev = 10;
@@ -58555,22 +58519,30 @@ var SuperUpload = /*#__PURE__*/function () {
               response = _context.sent;
               debug('[start] Multipart upload inited, <initiateMultipartUpload> --->: %O', response.body);
               uploadId = this.uploadId = response.body.uploadId;
-              _context.next = 22;
+              _context.next = 25;
               break;
             case 18:
               _context.prev = 18;
               _context.t0 = _context["catch"](10);
               debug('[start] Multipart upload init failed: %s', _context.t0.message);
+              this.state = Enums.STATE.FAILED;
+              _onStateChange = this.onStateChange;
+              if (_onStateChange) {
+                _onStateChange(Enums.STATE.FAILED, {
+                  message: "bce-sdk:super-upload initiateMultipartUpload failed: ".concat(_context.t0.message),
+                  data: []
+                });
+              }
               return _context.abrupt("return", []);
-            case 22:
-              _context.next = 25;
-              break;
-            case 24:
-              debug('[start] Multipart upload already inited, resume from checkpoint');
             case 25:
-              _context.next = 27;
-              return this.__listExistedParts();
+              _context.next = 28;
+              break;
             case 27:
+              debug('[start] Multipart upload already inited, resume from checkpoint');
+            case 28:
+              _context.next = 30;
+              return this.__listExistedParts();
+            case 30:
               _yield$this$__listExi = _context.sent;
               parts = _yield$this$__listExi.parts;
               uploadedBytes = _yield$this$__listExi.uploadedBytes;
@@ -58578,38 +58550,38 @@ var SuperUpload = /*#__PURE__*/function () {
               createTime = _yield$this$__listExi.createTime;
               error = _yield$this$__listExi.error;
               if (!error) {
-                _context.next = 39;
+                _context.next = 42;
                 break;
               }
               this.state = Enums.STATE.FAILED;
-              _onStateChange = this.onStateChange;
-              if (_onStateChange) {
-                _onStateChange(Enums.STATE.FAILED, {
+              _onStateChange2 = this.onStateChange;
+              if (_onStateChange2) {
+                _onStateChange2(Enums.STATE.FAILED, {
                   message: "bce-sdk:super-upload list part failed: ".concat(error.message),
                   data: null
                 });
               }
               debug('[start] list part failed: %s', error.message);
               return _context.abrupt("return", []);
-            case 39:
+            case 42:
               this.createTime = dayjs(createTime).unix();
               this.__uploadedBytes = uploadedBytes;
               this.__uploadedParts = parts;
 
               /** 上传完成就结束任务 */
               if (!(uploadedBytes >= this.ContentLength)) {
-                _context.next = 44;
-                break;
-              }
-              return _context.abrupt("return", this.__complete());
-            case 44:
-              tasks = this.__getMicroTasks(uploadId, uploadedBytes, parts.length, nextPartNum);
-              if (!(!tasks || tasks.length === 0)) {
                 _context.next = 47;
                 break;
               }
-              return _context.abrupt("return", []);
+              return _context.abrupt("return", this.__complete());
             case 47:
+              tasks = this.__getMicroTasks(uploadId, uploadedBytes, parts.length, nextPartNum);
+              if (!(!tasks || tasks.length === 0)) {
+                _context.next = 50;
+                break;
+              }
+              return _context.abrupt("return", []);
+            case 50:
               // 任务推入队列，会自动开始，单个任务异常不会阻塞队列
               tasks.forEach(function (microTask) {
                 _this2.__queue.push(microTask);
@@ -58623,7 +58595,7 @@ var SuperUpload = /*#__PURE__*/function () {
                 });
               }
               return _context.abrupt("return", tasks);
-            case 52:
+            case 55:
             case "end":
               return _context.stop();
           }
@@ -58692,7 +58664,7 @@ var SuperUpload = /*#__PURE__*/function () {
     key: "cancel",
     value: (function () {
       var _cancel = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
-        var client, bucketName, objectName, uploadId, response, onStateChange, _onStateChange2;
+        var client, bucketName, objectName, uploadId, response, onStateChange, _onStateChange3;
         return _regeneratorRuntime().wrap(function _callee2$(_context2) {
           while (1) switch (_context2.prev = _context2.next) {
             case 0:
@@ -58750,9 +58722,9 @@ var SuperUpload = /*#__PURE__*/function () {
               _context2.prev = 33;
               _context2.t0 = _context2["catch"](20);
               this.state = Enums.STATE.FAILED;
-              _onStateChange2 = this.onStateChange;
-              if (_onStateChange2) {
-                _onStateChange2(Enums.STATE.FAILED, {
+              _onStateChange3 = this.onStateChange;
+              if (_onStateChange3) {
+                _onStateChange3(Enums.STATE.FAILED, {
                   message: "bce-sdk:super-upload super upload cancel failed: ".concat(_context2.t0.message),
                   data: null
                 });
@@ -58778,7 +58750,7 @@ var SuperUpload = /*#__PURE__*/function () {
     key: "__complete",
     value: (function () {
       var _complete = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee3() {
-        var client, bucketName, objectName, uploadId, ContentLength, uploadedParts, uploadedBytes, exceptionParts, onStateChange, _onStateChange3, _onStateChange4, sortedParts, response, _onStateChange5, _onStateChange6;
+        var client, bucketName, objectName, uploadId, ContentLength, uploadedParts, uploadedBytes, exceptionParts, onStateChange, _onStateChange4, _onStateChange5, sortedParts, response, _onStateChange6, _onStateChange7;
         return _regeneratorRuntime().wrap(function _callee3$(_context3) {
           while (1) switch (_context3.prev = _context3.next) {
             case 0:
@@ -58810,9 +58782,9 @@ var SuperUpload = /*#__PURE__*/function () {
                 break;
               }
               this.state = Enums.STATE.FAILED;
-              _onStateChange3 = this.onStateChange;
-              if (_onStateChange3) {
-                _onStateChange3(Enums.STATE.FAILED, {
+              _onStateChange4 = this.onStateChange;
+              if (_onStateChange4) {
+                _onStateChange4(Enums.STATE.FAILED, {
                   message: "bce-sdk:super-upload super upload complete failed: uploaded parts is empty.",
                   data: null
                 });
@@ -58835,9 +58807,9 @@ var SuperUpload = /*#__PURE__*/function () {
               return _context3.abrupt("return");
             case 29:
               this.state = Enums.STATE.FAILED;
-              _onStateChange4 = this.onStateChange;
-              if (_onStateChange4) {
-                _onStateChange4(Enums.STATE.FAILED, {
+              _onStateChange5 = this.onStateChange;
+              if (_onStateChange5) {
+                _onStateChange5(Enums.STATE.FAILED, {
                   message: "bce-sdk:super-upload super upload complete failed: exceed the max retry times (3).",
                   data: {
                     exceptionParts: exceptionParts
@@ -58864,9 +58836,9 @@ var SuperUpload = /*#__PURE__*/function () {
                 progress: 1,
                 uploadedBytes: this.ContentLength
               });
-              _onStateChange5 = this.onStateChange;
-              if (_onStateChange5) {
-                _onStateChange5(Enums.STATE.COMPLETED, {
+              _onStateChange6 = this.onStateChange;
+              if (_onStateChange6) {
+                _onStateChange6(Enums.STATE.COMPLETED, {
                   message: "bce-sdk:super-upload super upload completed",
                   data: response.body
                 });
@@ -58877,9 +58849,9 @@ var SuperUpload = /*#__PURE__*/function () {
               _context3.prev = 48;
               _context3.t0 = _context3["catch"](35);
               this.state = Enums.STATE.FAILED;
-              _onStateChange6 = this.onStateChange;
-              if (_onStateChange6) {
-                _onStateChange6(Enums.STATE.FAILED, {
+              _onStateChange7 = this.onStateChange;
+              if (_onStateChange7) {
+                _onStateChange7(Enums.STATE.FAILED, {
                   message: "bce-sdk:super-upload super upload complete failed: ".concat(_context3.t0.message),
                   data: null
                 });
@@ -59019,17 +58991,67 @@ var SuperUpload = /*#__PURE__*/function () {
         return _listExistedParts.apply(this, arguments);
       }
       return __listExistedParts;
-    }())
+    }()
+    /**
+     * 对未上传完成的部分进行切片
+     * 分片数量: 1 (MIN_UPLOAD_PART_COUNT) - 10000 (MAX_UPLOAD_PART_COUNT)
+     * 分片大小: 除最后一个分片外，单个分片最小支持 100 KB (MIN_UPLOAD_PART_SIZE)，最大支持 5 GB (MAX_UPLOAD_PART_SIZE)，且整个 Object 大小不超过 48.8 TB (MAX_UPLOAD_FILE_SIZE)。
+     * 分片大小可以不一样, 所以每次初始化任务时需要对未上传部分进行重新分片
+     *
+     * @param {String} uploadId 上传任务ID
+     * @param {Number} uploadedBytes 已上传字节数
+     * @param {Number} uploadedPartCount 已上传分片数量
+     * @param {Number} nextPartNum 下一个未上传的分片序号
+     */
+    )
   }, {
-    key: "__calculatePartSize",
-    value:
+    key: "__getMicroTasks",
+    value: function __getMicroTasks(uploadId, uploadedBytes, uploadedPartCount, nextPartNum) {
+      var bucketName = this.bucketName;
+      var objectName = this.objectName;
+      var ContentLength = this.ContentLength;
+      var data = this.data;
+      var isFresh = uploadedPartCount === 0;
+
+      // 待上传总体积
+      var remainSize = ContentLength - uploadedBytes;
+      // 待上传起始字节
+      var offset = uploadedBytes;
+      // 待上传分片序号
+      var partNumber = isFresh ? 1 : nextPartNum;
+      // 分片大小
+      var chunkSize = this.__calculatePartSize(remainSize, uploadedPartCount);
+      debug('[__getMicroTasks] chunkSize: %d', chunkSize);
+      var microTasks = [];
+      while (remainSize > 0) {
+        var partSize = Math.min(remainSize, chunkSize);
+        var microTask = {
+          data: data,
+          uploadId: uploadId,
+          bucketName: bucketName,
+          objectName: objectName,
+          partNumber: partNumber,
+          partSize: partSize,
+          start: offset,
+          end: offset + partSize - 1
+        };
+        microTasks.push(microTask);
+        remainSize -= partSize;
+        offset += partSize;
+        partNumber += 1;
+      }
+      return microTasks;
+    }
+
     /**
      * 动态调整分片大小，如果剩余文件按照当前partSize分片超出分片数量上限，则动态增加partSize
      *
      * @param {Number} remainSize 文件剩余大小
      * @param {Number} uploadedPartCount 已经上传的分片数量
      */
-    function __calculatePartSize(remainSize, uploadedPartCount) {
+  }, {
+    key: "__calculatePartSize",
+    value: function __calculatePartSize(remainSize, uploadedPartCount) {
       // 默认分片大小
       var partSize = this.chunkSize;
       var isPartSizeAvailable = Math.ceil(remainSize / partSize) + uploadedPartCount <= MAX_UPLOAD_PART_COUNT;
@@ -59246,12 +59268,16 @@ var COMMAND_MAP = {
 var IMAGE_DOMAIN = 'bceimg.com';
 
 /**
+ * @typedef {import('./http_client.js').BceConfig} BceConfig
+ */
+
+/**
  * BOS service api
  *
  * @see http://gollum.baidu.com/BOS_API#BOS-API文档
  *
  * @constructor
- * @param {Object} config The bos client configuration.
+ * @param {BceConfig} config The bos client configuration.
  * @extends {BceBaseClient}
  */
 function BosClient(config) {
@@ -60699,7 +60725,9 @@ BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, conf
         client.emit(eventName, evt, httpContext);
       });
     });
-    var promise = this._httpAgent.sendRequest(httpMethod, resource, args.body, args.headers, args.params, u.bind(this.createSignature, this), args.outputStream);
+    var promise = this._httpAgent.sendRequest(httpMethod, resource, args.body, args.headers, args.params,
+    // 支持自定义签名函数
+    u.isFunction(config.createSignature) ? u.bind(config.createSignature, this) : u.bind(this.createSignature, this), args.outputStream);
     promise.abort = function () {
       if (agent._req) {
         // node环境下可能拿不到xhr实例，直接调用_req的abort方法
@@ -62921,10 +62949,37 @@ var H = require('./headers');
 var Auth = require('./auth');
 
 /**
+ * 签名计算函数
+ *
+ * @typedef {Function} SignatureFunction
+ * @property {Object} credentials - 鉴权信息
+ * @property {string} credentials.ak - 百度云账户体系 `Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} credentials.sk -  百度云账户体系 `Secret Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} httpMethod - http方法, GET,POST,PUT,DELETE,HEAD
+ * @property {string} path - http request path
+ * @property {Object} params - The querystrings in url.
+ * @property {Object} headers - The http request headers.
+ * @property {HttpClient} context - 上下文
+ * @property {string} returns - 计算好的authorization签名
+ */
+
+/**
+ * @typedef {Object} BceConfig
+ * @property {string} endpoint - 服务Endpoinit, default: http(s)://<Service>.<Region>.baidubce.com
+ * @property {string} [region=bj] - 区域, default: bj
+ * @property {Object} credentials - 鉴权信息
+ * @property {string} credentials.ak - 百度云账户体系 `Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} credentials.sk -  百度云账户体系 `Secret Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string=} sessionToken - 使用临时鉴权信息时，需要传入 `sessionToken`
+ * @property {string=} protocol - 协议
+ * @property {SignatureFunction=} createSignature - 签名函数，使用临时鉴权时，需要传入 `createSignature` 函数更新签名
+ */
+
+/**
  * The HttpClient
  *
  * @constructor
- * @param {Object} config The http client configuration.
+ * @param {BceConfig} config The http client configuration.
  */
 function HttpClient(config) {
   EventEmitter.call(this);
@@ -62939,6 +62994,61 @@ function HttpClient(config) {
 util.inherits(HttpClient, EventEmitter);
 
 /**
+ * 基于对象路径更新BceConfig中的参数值，注意不要破坏源对象的引用
+ *
+ * @param {string} path - key路径
+ * @param {string} value - 更新后的值
+ */
+HttpClient.prototype.updateConfigByPath = function (path, value) {
+  var pathArr = path.split('.');
+  function traverseAndUpdate(currentObj, index) {
+    if (index >= pathArr.length - 1) {
+      // 到达路径的最后一个属性，设置其值
+      currentObj[pathArr[index]] = value;
+      return;
+    }
+
+    // 如果下一个属性在当前对象中不存在，则创建它
+    if (!(pathArr[index] in currentObj)) {
+      currentObj[pathArr[index]] = {};
+    }
+
+    // 递归遍历到下一个属性
+    traverseAndUpdate(currentObj[pathArr[index]], index + 1);
+  }
+
+  // 调用辅助函数开始遍历和更新
+  traverseAndUpdate(this.config, 0);
+  return this.config;
+};
+
+/**
+ * update config
+ *
+ * @param {BceConfig} patch
+ */
+HttpClient.prototype.updateConfig = function (patch) {
+  if (!u.isObject(patch) || u.isEmpty(patch)) {
+    return;
+  }
+  if (u.has(this.config, 'region') && patch.region && typeof patch.region === 'string') {
+    this.config.region = patch.region;
+  }
+  if (u.has(this.config, 'endpoint') && patch.endpoint && typeof patch.endpoint === 'string') {
+    this.config.endpoint = patch.endpoint;
+  }
+  if (u.has(this.config.credentials, 'ak') && patch.credentials && patch.credentials.ak && typeof patch.credentials.ak === 'string') {
+    this.config.credentials.ak = patch.credentials.ak;
+  }
+  if (u.has(this.config.credentials, 'sk') && patch.credentials && patch.credentials.sk && typeof patch.credentials.sk === 'string') {
+    this.config.credentials.sk = patch.credentials.sk;
+  }
+  if (patch.sessionToken && typeof patch.sessionToken === 'string') {
+    this.config.sessionToken = patch.sessionToken;
+  }
+};
+
+/**
  * Send Http Request
  *
  * @param {string} httpMethod GET,POST,PUT,DELETE,HEAD
@@ -62947,7 +63057,7 @@ util.inherits(HttpClient, EventEmitter);
  * stream, `Content-Length` must be set explicitly.
  * @param {Object=} headers The http request headers.
  * @param {Object=} params The querystrings in url.
- * @param {function():string=} signFunction The `Authorization` signature function
+ * @param {SignatureFunction=} signFunction The `Authorization` signature function
  * @param {stream.Writable=} outputStream The http response body.
  * @param {number=} retry The maximum number of network connection attempts.
  *
@@ -63003,7 +63113,7 @@ HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, pa
   // Verification happens at the connection level, before the HTTP request is sent.
   options.rejectUnauthorized = false;
   if (typeof signFunction === 'function') {
-    var promise = signFunction(this.config.credentials, httpMethod, path, params, headers);
+    var promise = signFunction(this.config.credentials, httpMethod, path, params, headers, this);
     if (isPromise(promise)) {
       return promise.then(function (authorization, xbceDate) {
         headers[H.AUTHORIZATION] = authorization;
@@ -63108,9 +63218,9 @@ HttpClient.prototype._guessContentLength = function (data) {
       return data.length;
     }
     /**
-     if (typeof FormData !== 'undefined' && data instanceof FormData) {
-     }
-     */
+         if (typeof FormData !== 'undefined' && data instanceof FormData) {
+         }
+         */
   } else if (Buffer.isBuffer(data)) {
     return data.length;
   }
@@ -63120,7 +63230,7 @@ HttpClient.prototype._fixHeaders = function (headers) {
   var fixedHeaders = {};
   if (headers) {
     Object.keys(headers).forEach(function (key) {
-      var value = headers[key].trim();
+      var value = typeof headers[key] === 'string' ? headers[key].trim() : headers[key];
       if (value) {
         key = key.toLowerCase();
         if (key === 'etag') {

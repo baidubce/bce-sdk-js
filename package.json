@@ -7,16 +7,26 @@
     "fs": false,
     "index.js": "./dist/baidubce-sdk.bundle.js"
   },
+  "files": [
+    "dist/",
+    "src/",
+    "types/",
+    "index.js",
+    "package.json",
+    "CHANGELOG.md",
+    "README.md"
+  ],
   "directories": {
-    "test": "test"
+    "test": "__tests__"
   },
   "scripts": {
-    "test": "./test/run-all.sh",
     "version": "node scripts/version.js",
     "build": "node scripts/build.js",
     "pack": "rm -rf dist/ && mkdir dist && browserify index.js -s baidubce.sdk -o dist/baidubce-sdk.bundle.js && uglifyjs dist/baidubce-sdk.bundle.js --compress --mangle -o dist/baidubce-sdk.bundle.min.js",
     "docs": "cd example && npm run start",
-    "publish:bos": "node ./publish/publish_to_bos.js"
+    "publish:bos": "node ./publish/publish_to_bos.js",
+    "test": "jest",
+    "test:legacy": "./test/run-all.sh"
   },
   "repository": {
     "type": "git",
@@ -46,6 +56,7 @@
     "@babel/plugin-transform-async-to-generator": "^7.23.3",
     "@babel/preset-env": "^7.24.0",
     "@types/async": "^3.2.24",
+    "@types/jest": "^29.5.12",
     "@types/lodash": "^4.14.202",
     "babelify": "^10.0.0",
     "browserify": "10.2.6",
@@ -53,8 +64,12 @@
     "coveralls": "^3.0.2",
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.5",
+    "jest": "^29.7.0",
     "mocha": "^5.2.0",
     "rimraf": "^5.0.5",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5",
     "uglify-js": "^3.17.4"
   }
 }

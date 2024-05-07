@@ -33,10 +33,37 @@ var H = require('./headers');
 var Auth = require('./auth');
 
 /**
+ * 签名计算函数
+ *
+ * @typedef {Function} SignatureFunction
+ * @property {Object} credentials - 鉴权信息
+ * @property {string} credentials.ak - 百度云账户体系 `Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} credentials.sk -  百度云账户体系 `Secret Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} httpMethod - http方法, GET,POST,PUT,DELETE,HEAD
+ * @property {string} path - http request path
+ * @property {Object} params - The querystrings in url.
+ * @property {Object} headers - The http request headers.
+ * @property {HttpClient} context - 上下文
+ * @property {string} returns - 计算好的authorization签名
+ */
+
+/**
+ * @typedef {Object} BceConfig
+ * @property {string} endpoint - 服务Endpoinit, default: http(s)://<Service>.<Region>.baidubce.com
+ * @property {string} [region=bj] - 区域, default: bj
+ * @property {Object} credentials - 鉴权信息
+ * @property {string} credentials.ak - 百度云账户体系 `Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} credentials.sk -  百度云账户体系 `Secret Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string=} sessionToken - 使用临时鉴权信息时，需要传入 `sessionToken`
+ * @property {string=} protocol - 协议
+ * @property {SignatureFunction=} createSignature - 签名函数，使用临时鉴权时，需要传入 `createSignature` 函数更新签名
+ */
+
+/**
  * The HttpClient
  *
  * @constructor
- * @param {Object} config The http client configuration.
+ * @param {BceConfig} config The http client configuration.
  */
 function HttpClient(config) {
   EventEmitter.call(this);
@@ -52,6 +79,37 @@ function HttpClient(config) {
 util.inherits(HttpClient, EventEmitter);
 
 /**
+ * 基于对象路径更新BceConfig中的参数值，注意不要破坏源对象的引用
+ *
+ * @param {string} path - key路径
+ * @param {string} value - 更新后的值
+ */
+HttpClient.prototype.updateConfigByPath = function (path, value) {
+  const pathArr = path.split('.');
+
+  function traverseAndUpdate(currentObj, index) {
+    if (index >= pathArr.length - 1) {
+      // 到达路径的最后一个属性，设置其值
+      currentObj[pathArr[index]] = value;
+      return;
+    }
+
+    // 如果下一个属性在当前对象中不存在，则创建它
+    if (!(pathArr[index] in currentObj)) {
+      currentObj[pathArr[index]] = {};
+    }
+
+    // 递归遍历到下一个属性
+    traverseAndUpdate(currentObj[pathArr[index]], index + 1);
+  }
+
+  // 调用辅助函数开始遍历和更新
+  traverseAndUpdate(this.config, 0);
+
+  return this.config;
+};
+
+/**
  * Send Http Request
  *
  * @param {string} httpMethod GET,POST,PUT,DELETE,HEAD
@@ -60,7 +118,7 @@ util.inherits(HttpClient, EventEmitter);
  * stream, `Content-Length` must be set explicitly.
  * @param {Object=} headers The http request headers.
  * @param {Object=} params The querystrings in url.
- * @param {function():string=} signFunction The `Authorization` signature function
+ * @param {SignatureFunction=} signFunction The `Authorization` signature function
  * @param {stream.Writable=} outputStream The http response body.
  * @param {number=} retry The maximum number of network connection attempts.
  *
@@ -124,7 +182,7 @@ HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, pa
   options.rejectUnauthorized = false;
 
   if (typeof signFunction === 'function') {
-    var promise = signFunction(this.config.credentials, httpMethod, path, params, headers);
+    var promise = signFunction(this.config.credentials, httpMethod, path, params, headers, this);
     if (isPromise(promise)) {
       return promise.then(function (authorization, xbceDate) {
         headers[H.AUTHORIZATION] = authorization;
@@ -132,6 +190,7 @@ HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, pa
           headers[H.X_BCE_DATE] = xbceDate;
         }
         debug('options = %j', options);
+
         return client._doRequest(options, body, outputStream);
       });
     } else if (typeof promise === 'string') {

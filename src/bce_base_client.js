@@ -28,10 +28,14 @@ var HttpClient = require('./http_client');
 var H = require('./headers');
 
 /**
+ * @typedef {import('./http_client.js').BceConfig} BceConfig
+ */
+
+/**
  * BceBaseClient
  *
  * @constructor
- * @param {Object} clientConfig The bce client configuration.
+ * @param {BceConfig} clientConfig The bce client configuration.
  * @param {string} serviceId The service id.
  * @param {boolean=} regionSupported The service supported region or not.
  */
