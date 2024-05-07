@@ -1,6 +1,6 @@
 {
   "name": "@baiducloud/sdk",
-  "version": "1.0.1-beta.3",
+  "version": "1.0.1-beta.4",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "browser": {
@@ -24,7 +24,7 @@
     "build": "node scripts/build.js",
     "pack": "rm -rf dist/ && mkdir dist && browserify index.js -s baidubce.sdk -o dist/baidubce-sdk.bundle.js && uglifyjs dist/baidubce-sdk.bundle.js --compress --mangle -o dist/baidubce-sdk.bundle.min.js",
     "docs": "cd example && npm run start",
-    "publish:bos": "node ./publish/publish_to_bos.js",
+    "publish:bos": "node scripts/publish_to_bos.js",
     "test": "jest",
     "test:legacy": "./test/run-all.sh"
   },

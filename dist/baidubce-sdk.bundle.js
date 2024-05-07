@@ -57354,22 +57354,31 @@ exports.createContext = Script.createContext = function (context) {
 },{"indexof":153}],411:[function(require,module,exports){
 module.exports={
   "name": "@baiducloud/sdk",
-  "version": "1.0.1-beta.3",
+  "version": "1.0.1-beta.4",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "browser": {
     "fs": false,
     "index.js": "./dist/baidubce-sdk.bundle.js"
   },
+  "files": [
+    "dist/",
+    "src/",
+    "types/",
+    "index.js",
+    "package.json",
+    "CHANGELOG.md",
+    "README.md"
+  ],
   "directories": {
-    "test": "test"
+    "test": "__tests__"
   },
   "scripts": {
     "version": "node scripts/version.js",
     "build": "node scripts/build.js",
     "pack": "rm -rf dist/ && mkdir dist && browserify index.js -s baidubce.sdk -o dist/baidubce-sdk.bundle.js && uglifyjs dist/baidubce-sdk.bundle.js --compress --mangle -o dist/baidubce-sdk.bundle.min.js",
     "docs": "cd example && npm run start",
-    "publish:bos": "node ./publish/publish_to_bos.js",
+    "publish:bos": "node scripts/publish_to_bos.js",
     "test": "jest",
     "test:legacy": "./test/run-all.sh"
   },
@@ -63020,32 +63029,6 @@ HttpClient.prototype.updateConfigByPath = function (path, value) {
   // 调用辅助函数开始遍历和更新
   traverseAndUpdate(this.config, 0);
   return this.config;
-};
-
-/**
- * update config
- *
- * @param {BceConfig} patch
- */
-HttpClient.prototype.updateConfig = function (patch) {
-  if (!u.isObject(patch) || u.isEmpty(patch)) {
-    return;
-  }
-  if (u.has(this.config, 'region') && patch.region && typeof patch.region === 'string') {
-    this.config.region = patch.region;
-  }
-  if (u.has(this.config, 'endpoint') && patch.endpoint && typeof patch.endpoint === 'string') {
-    this.config.endpoint = patch.endpoint;
-  }
-  if (u.has(this.config.credentials, 'ak') && patch.credentials && patch.credentials.ak && typeof patch.credentials.ak === 'string') {
-    this.config.credentials.ak = patch.credentials.ak;
-  }
-  if (u.has(this.config.credentials, 'sk') && patch.credentials && patch.credentials.sk && typeof patch.credentials.sk === 'string') {
-    this.config.credentials.sk = patch.credentials.sk;
-  }
-  if (patch.sessionToken && typeof patch.sessionToken === 'string') {
-    this.config.sessionToken = patch.sessionToken;
-  }
 };
 
 /**
