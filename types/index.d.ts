@@ -16,12 +16,12 @@ import './cfc-client';
 export = BaiduBce.SDK;
 
 interface SDKGlobal {
-    BosClient: BaiduBce.SDK.BosClient,
-    BccClient: BaiduBce.SDK.BccClient,
-    CfcClient: BaiduBce.SDK.CfcClient
-    // 太多了，慢慢补充吧
+  BosClient: BaiduBce.SDK.BosClient;
+  BccClient: BaiduBce.SDK.BccClient;
+  CfcClient: BaiduBce.SDK.CfcClient;
+  // 太多了，慢慢补充吧
 }
 
 declare global {
-    const baidubce: { sdk: SDKGlobal };
+  const baidubce: {sdk: SDKGlobal};
 }

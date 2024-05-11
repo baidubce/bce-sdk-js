@@ -33,23 +33,81 @@ var H = require('./headers');
 var Auth = require('./auth');
 
 /**
+ * 签名计算函数
+ *
+ * @typedef {Function} SignatureFunction
+ * @property {Object} credentials - 鉴权信息
+ * @property {string} credentials.ak - 百度云账户体系 `Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} credentials.sk -  百度云账户体系 `Secret Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} httpMethod - http方法, GET,POST,PUT,DELETE,HEAD
+ * @property {string} path - http request path
+ * @property {Object} params - The querystrings in url.
+ * @property {Object} headers - The http request headers.
+ * @property {HttpClient} context - 上下文
+ * @property {string} returns - 计算好的authorization签名
+ */
+
+/**
+ * @typedef {Object} BceConfig
+ * @property {string} endpoint - 服务Endpoinit, default: http(s)://<Service>.<Region>.baidubce.com
+ * @property {string} [region=bj] - 区域, default: bj
+ * @property {Object} credentials - 鉴权信息
+ * @property {string} credentials.ak - 百度云账户体系 `Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string} credentials.sk -  百度云账户体系 `Secret Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
+ * @property {string=} sessionToken - 使用临时鉴权信息时，需要传入 `sessionToken`
+ * @property {string=} protocol - 协议
+ * @property {SignatureFunction=} createSignature - 签名函数，使用临时鉴权时，需要传入 `createSignature` 函数更新签名
+ */
+
+/**
  * The HttpClient
  *
  * @constructor
- * @param {Object} config The http client configuration.
+ * @param {BceConfig} config The http client configuration.
  */
 function HttpClient(config) {
-    EventEmitter.call(this);
+  EventEmitter.call(this);
 
-    this.config = config;
+  this.config = config;
 
-    /**
-     * http(s) request object
-     * @type {Object}
-     */
-    this._req = null;
+  /**
+   * http(s) request object
+   * @type {Object}
+   */
+  this._req = null;
 }
 util.inherits(HttpClient, EventEmitter);
+
+/**
+ * 基于对象路径更新BceConfig中的参数值，注意不要破坏源对象的引用
+ *
+ * @param {string} path - key路径
+ * @param {string} value - 更新后的值
+ */
+HttpClient.prototype.updateConfigByPath = function (path, value) {
+  const pathArr = path.split('.');
+
+  function traverseAndUpdate(currentObj, index) {
+    if (index >= pathArr.length - 1) {
+      // 到达路径的最后一个属性，设置其值
+      currentObj[pathArr[index]] = value;
+      return;
+    }
+
+    // 如果下一个属性在当前对象中不存在，则创建它
+    if (!(pathArr[index] in currentObj)) {
+      currentObj[pathArr[index]] = {};
+    }
+
+    // 递归遍历到下一个属性
+    traverseAndUpdate(currentObj[pathArr[index]], index + 1);
+  }
+
+  // 调用辅助函数开始遍历和更新
+  traverseAndUpdate(this.config, 0);
+
+  return this.config;
+};
 
 /**
  * Send Http Request
@@ -60,7 +118,7 @@ util.inherits(HttpClient, EventEmitter);
  * stream, `Content-Length` must be set explicitly.
  * @param {Object=} headers The http request headers.
  * @param {Object=} params The querystrings in url.
- * @param {function():string=} signFunction The `Authorization` signature function
+ * @param {SignatureFunction=} signFunction The `Authorization` signature function
  * @param {stream.Writable=} outputStream The http response body.
  * @param {number=} retry The maximum number of network connection attempts.
  *
@@ -70,368 +128,363 @@ util.inherits(HttpClient, EventEmitter);
  * @return {Q.defer}
  */
 HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, params, signFunction, outputStream) {
-    httpMethod = httpMethod.toUpperCase();
-    var requestUrl = this._getRequestUrl(path, params);
-    var options = require('url').parse(requestUrl);
-    debug('httpMethod = %s, requestUrl = %s, options = %j', httpMethod, requestUrl, options);
+  httpMethod = httpMethod.toUpperCase();
+  var requestUrl = this._getRequestUrl(path, params);
+  var options = require('url').parse(requestUrl);
+  debug('httpMethod = %s, requestUrl = %s, options = %j', httpMethod, requestUrl, options);
 
-    // Prepare the request headers.
-    var defaultHeaders = {};
-    if (typeof navigator === 'object' && navigator.userAgent) {
-        defaultHeaders[H.USER_AGENT] = navigator.userAgent;
-    } else {
-        defaultHeaders[H.USER_AGENT] = util.format(
-            'bce-sdk-nodejs/%s/%s/%s',
-            require('../package.json').version,
-            process.platform,
-            process.version
-        );
+  // Prepare the request headers.
+  var defaultHeaders = {};
+  if (typeof navigator === 'object' && navigator.userAgent) {
+    defaultHeaders[H.USER_AGENT] = navigator.userAgent;
+  } else {
+    defaultHeaders[H.USER_AGENT] = util.format(
+      'bce-sdk-nodejs/%s/%s/%s',
+      require('../package.json').version,
+      process.platform,
+      process.version
+    );
+  }
+  defaultHeaders[H.X_BCE_DATE] = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  defaultHeaders[H.CONNECTION] = 'close';
+  defaultHeaders[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
+  defaultHeaders[H.HOST] = options.host;
+
+  headers = u.extend({}, defaultHeaders, headers);
+
+  // if (!headers.hasOwnProperty(H.X_BCE_REQUEST_ID)) {
+  //    headers[H.X_BCE_REQUEST_ID] = this._generateRequestId();
+  // }
+
+  // Check the content-length
+  if (!headers.hasOwnProperty(H.CONTENT_LENGTH)) {
+    var contentLength = this._guessContentLength(body);
+    if (!(contentLength === 0 && /GET|HEAD/i.test(httpMethod))) {
+      // 如果是 GET 或 HEAD 请求，并且 Content-Length 是 0，那么 Request Header 里面就不要出现 Content-Length
+      // 否则本地计算签名的时候会计算进去，但是浏览器发请求的时候不一定会有，此时导致 Signature Mismatch 的情况
+      headers[H.CONTENT_LENGTH] = contentLength;
     }
-    defaultHeaders[H.X_BCE_DATE] = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-    defaultHeaders[H.CONNECTION] = 'close';
-    defaultHeaders[H.CONTENT_TYPE] = 'application/json; charset=UTF-8';
-    defaultHeaders[H.HOST] = options.host;
+  }
 
-    headers = u.extend({}, defaultHeaders, headers);
+  var client = this;
+  options.method = httpMethod;
+  options.headers = headers;
 
-    // if (!headers.hasOwnProperty(H.X_BCE_REQUEST_ID)) {
-    //    headers[H.X_BCE_REQUEST_ID] = this._generateRequestId();
-    // }
+  // 通过browserify打包后，在Safari下并不能有效处理server的content-type
+  // 参考ISSUE：https://github.com/jhiesey/stream-http/issues/8
+  options.mode = 'prefer-fast';
+  // 某些产品网关CORS Header `Access-Control-Allow-Origin` 为 `*`, 例如：VOD
+  options.withCredentials = false;
 
-    // Check the content-length
-    if (!headers.hasOwnProperty(H.CONTENT_LENGTH)) {
-        var contentLength = this._guessContentLength(body);
-        if (!(contentLength === 0 && /GET|HEAD/i.test(httpMethod))) {
-            // 如果是 GET 或 HEAD 请求，并且 Content-Length 是 0，那么 Request Header 里面就不要出现 Content-Length
-            // 否则本地计算签名的时候会计算进去，但是浏览器发请求的时候不一定会有，此时导致 Signature Mismatch 的情况
-            headers[H.CONTENT_LENGTH] = contentLength;
+  // rejectUnauthorized: If true, the server certificate is verified against the list of supplied CAs.
+  // An 'error' event is emitted if verification fails.
+  // Verification happens at the connection level, before the HTTP request is sent.
+  options.rejectUnauthorized = false;
+
+  if (typeof signFunction === 'function') {
+    var promise = signFunction(this.config.credentials, httpMethod, path, params, headers, this);
+    if (isPromise(promise)) {
+      return promise.then(function (authorization, xbceDate) {
+        headers[H.AUTHORIZATION] = authorization;
+        if (xbceDate) {
+          headers[H.X_BCE_DATE] = xbceDate;
         }
-    }
+        debug('options = %j', options);
 
-    var client = this;
-    options.method = httpMethod;
-    options.headers = headers;
-
-    // 通过browserify打包后，在Safari下并不能有效处理server的content-type
-    // 参考ISSUE：https://github.com/jhiesey/stream-http/issues/8
-    options.mode = 'prefer-fast';
-    // 某些产品网关CORS Header `Access-Control-Allow-Origin` 为 `*`, 例如：VOD
-    options.withCredentials = false;
-
-    // rejectUnauthorized: If true, the server certificate is verified against the list of supplied CAs.
-    // An 'error' event is emitted if verification fails.
-    // Verification happens at the connection level, before the HTTP request is sent.
-    options.rejectUnauthorized = false;
-
-    if (typeof signFunction === 'function') {
-        var promise = signFunction(this.config.credentials, httpMethod, path, params, headers);
-        if (isPromise(promise)) {
-            return promise.then(function (authorization, xbceDate) {
-                headers[H.AUTHORIZATION] = authorization;
-                if (xbceDate) {
-                    headers[H.X_BCE_DATE] = xbceDate;
-                }
-                debug('options = %j', options);
-                return client._doRequest(options, body, outputStream);
-            });
-        } else if (typeof promise === 'string') {
-            headers[H.AUTHORIZATION] = promise;
-        } else {
-            throw new Error('Invalid signature = (' + promise + ')');
-        }
+        return client._doRequest(options, body, outputStream);
+      });
+    } else if (typeof promise === 'string') {
+      headers[H.AUTHORIZATION] = promise;
     } else {
-        headers[H.AUTHORIZATION] = createSignature(this.config.credentials, httpMethod, path, params, headers);
+      throw new Error('Invalid signature = (' + promise + ')');
     }
+  } else {
+    headers[H.AUTHORIZATION] = createSignature(this.config.credentials, httpMethod, path, params, headers);
+  }
 
-    debug('options = %j', options);
-    return client._doRequest(options, body, outputStream);
+  debug('options = %j', options);
+  return client._doRequest(options, body, outputStream);
 };
 
 function createSignature(credentials, httpMethod, path, params, headers) {
-    var auth = new Auth(credentials.ak, credentials.sk);
-    return auth.generateAuthorization(httpMethod, path, params, headers);
+  var auth = new Auth(credentials.ak, credentials.sk);
+  return auth.generateAuthorization(httpMethod, path, params, headers);
 }
 
 function isPromise(obj) {
-    return obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+  return obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
 
 HttpClient.prototype._isValidStatus = function (statusCode) {
-    return statusCode >= 200 && statusCode < 300;
+  return statusCode >= 200 && statusCode < 300;
 };
 
 HttpClient.prototype._doRequest = function (options, body, outputStream) {
-    var deferred = Q.defer();
-    var api = options.protocol === 'https:' ? https : http;
-    var client = this;
+  var deferred = Q.defer();
+  var api = options.protocol === 'https:' ? https : http;
+  var client = this;
 
-    var req = (client._req = api.request(options, function (res) {
-        if (client._isValidStatus(res.statusCode) && outputStream && outputStream instanceof stream.Writable) {
-            res.pipe(outputStream);
-            outputStream.on('finish', function () {
-                deferred.resolve(success(client._fixHeaders(res.headers), {}));
-            });
-            outputStream.on('error', function (error) {
-                deferred.reject(error);
-            });
-            return;
-        }
-        deferred.resolve(client._recvResponse(res));
-    }));
-
-    // 设置超时10s
-    // if (typeof req.setTimeout === 'function') {
-    //     req.setTimeout(60e3);
-
-    //     req.on('timeout', function() {
-    //         deferred.reject(new Error('socket Timeout!'));
-
-    //         req.destroy();
-    //     });
-    // } else if (req.xhr) {
-    //     req.xhr.timeout = 60e3;
-    // }
-
-    if (req.xhr && typeof req.xhr.upload === 'object') {
-        u.each(['progress', 'error', 'abort', 'timeout'], function (eventName) {
-            req.xhr.upload.addEventListener(
-                eventName,
-                function (evt) {
-                    client.emit(eventName, evt);
-                },
-                false
-            );
-        });
-    }
-
-    req.on('error', function (error) {
+  var req = (client._req = api.request(options, function (res) {
+    if (client._isValidStatus(res.statusCode) && outputStream && outputStream instanceof stream.Writable) {
+      res.pipe(outputStream);
+      outputStream.on('finish', function () {
+        deferred.resolve(success(client._fixHeaders(res.headers), {}));
+      });
+      outputStream.on('error', function (error) {
         deferred.reject(error);
-    });
-
-    try {
-        client._sendRequest(req, body);
-    } catch (ex) {
-        deferred.reject(ex);
+      });
+      return;
     }
-    return deferred.promise;
+    deferred.resolve(client._recvResponse(res));
+  }));
+
+  // 设置超时10s
+  // if (typeof req.setTimeout === 'function') {
+  //     req.setTimeout(60e3);
+
+  //     req.on('timeout', function() {
+  //         deferred.reject(new Error('socket Timeout!'));
+
+  //         req.destroy();
+  //     });
+  // } else if (req.xhr) {
+  //     req.xhr.timeout = 60e3;
+  // }
+
+  if (req.xhr && typeof req.xhr.upload === 'object') {
+    u.each(['progress', 'error', 'abort', 'timeout'], function (eventName) {
+      req.xhr.upload.addEventListener(
+        eventName,
+        function (evt) {
+          client.emit(eventName, evt);
+        },
+        false
+      );
+    });
+  }
+
+  req.on('error', function (error) {
+    deferred.reject(error);
+  });
+
+  try {
+    client._sendRequest(req, body);
+  } catch (ex) {
+    deferred.reject(ex);
+  }
+  return deferred.promise;
 };
 
 HttpClient.prototype._generateRequestId = function () {
-    function chunk() {
-        var v = (~~(Math.random() * 0xffff)).toString(16);
-        if (v.length < 4) {
-            v += new Array(4 - v.length + 1).join('0');
-        }
-        return v;
+  function chunk() {
+    var v = (~~(Math.random() * 0xffff)).toString(16);
+    if (v.length < 4) {
+      v += new Array(4 - v.length + 1).join('0');
     }
+    return v;
+  }
 
-    return util.format('%s%s-%s-%s-%s-%s%s%s', chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk());
+  return util.format('%s%s-%s-%s-%s-%s%s%s', chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk());
 };
 
 HttpClient.prototype._guessContentLength = function (data) {
-    if (data == null) {
-        return 0;
-    } else if (typeof data === 'string') {
-        return Buffer.byteLength(data);
-    } else if (typeof data === 'object') {
-        if (typeof Blob !== 'undefined' && data instanceof Blob) {
-            return data.size;
-        }
-        if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) {
-            return data.byteLength;
-        }
-        if (Buffer.isBuffer(data)) {
-            return data.length;
-        }
-        /**
+  if (data == null) {
+    return 0;
+  } else if (typeof data === 'string') {
+    return Buffer.byteLength(data);
+  } else if (typeof data === 'object') {
+    if (typeof Blob !== 'undefined' && data instanceof Blob) {
+      return data.size;
+    }
+    if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) {
+      return data.byteLength;
+    }
+    if (Buffer.isBuffer(data)) {
+      return data.length;
+    }
+    /**
          if (typeof FormData !== 'undefined' && data instanceof FormData) {
          }
          */
-    } else if (Buffer.isBuffer(data)) {
-        return data.length;
-    }
+  } else if (Buffer.isBuffer(data)) {
+    return data.length;
+  }
 
-    throw new Error('No Content-Length is specified.');
+  throw new Error('No Content-Length is specified.');
 };
 
 HttpClient.prototype._fixHeaders = function (headers) {
-    var fixedHeaders = {};
+  var fixedHeaders = {};
 
-    if (headers) {
-        Object.keys(headers).forEach(function (key) {
-            var value = headers[key].trim();
-            if (value) {
-                key = key.toLowerCase();
-                if (key === 'etag') {
-                    value = value.replace(/"/g, '');
-                }
-                fixedHeaders[key] = value;
-            }
-        });
-    }
+  if (headers) {
+    Object.keys(headers).forEach(function (key) {
+      var value = typeof headers[key] === 'string' ? headers[key].trim() : headers[key];
+      if (value) {
+        key = key.toLowerCase();
+        if (key === 'etag') {
+          value = value.replace(/"/g, '');
+        }
+        fixedHeaders[key] = value;
+      }
+    });
+  }
 
-    return fixedHeaders;
+  return fixedHeaders;
 };
 
 HttpClient.prototype._recvResponse = function (res) {
-    var responseHeaders = this._fixHeaders(res.headers);
-    var statusCode = res.statusCode;
+  var responseHeaders = this._fixHeaders(res.headers);
+  var statusCode = res.statusCode;
 
-    function parseHttpResponseBody(raw) {
-        var contentType = responseHeaders['content-type'];
+  function parseHttpResponseBody(raw) {
+    var contentType = responseHeaders['content-type'];
 
-        if (!raw.length) {
-            return {};
-        } else if (contentType && /(application|text)\/json/.test(contentType)) {
-            return JSON.parse(raw.toString());
-        }
-        return raw;
+    if (!raw.length) {
+      return {};
+    } else if (contentType && /(application|text)\/json/.test(contentType)) {
+      return JSON.parse(raw.toString());
+    }
+    return raw;
+  }
+
+  var deferred = Q.defer();
+
+  var payload = [];
+  /* eslint-disable */
+  res.on('data', function (chunk) {
+    if (Buffer.isBuffer(chunk)) {
+      payload.push(chunk);
+    } else {
+      // xhr2返回的内容是 string，不是 Buffer，导致 Buffer.concat 的时候报错了
+      payload.push(new Buffer(chunk));
+    }
+  });
+  res.on('error', function (e) {
+    deferred.reject(e);
+  });
+  /* eslint-enable */
+  res.on('end', function () {
+    var raw = Buffer.concat(payload);
+    var responseBody = null;
+
+    try {
+      debug('responseHeaders = %j', responseHeaders);
+      responseBody = parseHttpResponseBody(raw);
+    } catch (e) {
+      debug('statusCode = %s, Parse response body error = %s', statusCode, e.message);
+      deferred.reject(failure(statusCode, e.message));
+      return;
     }
 
-    var deferred = Q.defer();
+    if (statusCode >= 100 && statusCode < 200) {
+      deferred.reject(failure(statusCode, 'Can not handle 1xx http status code.'));
+    } else if (statusCode < 100 || statusCode >= 300) {
+      if (responseBody.requestId) {
+        deferred.reject(
+          failure(statusCode, responseBody.message, responseBody.code, responseBody.requestId, responseHeaders.date)
+        );
+      } else {
+        deferred.reject(failure(statusCode, responseBody));
+      }
+    }
 
-    var payload = [];
-    /* eslint-disable */
-    res.on('data', function (chunk) {
-        if (Buffer.isBuffer(chunk)) {
-            payload.push(chunk);
-        } else {
-            // xhr2返回的内容是 string，不是 Buffer，导致 Buffer.concat 的时候报错了
-            payload.push(new Buffer(chunk));
-        }
-    });
-    res.on('error', function (e) {
-        deferred.reject(e);
-    });
-    /* eslint-enable */
-    res.on('end', function () {
-        var raw = Buffer.concat(payload);
-        var responseBody = null;
+    deferred.resolve(success(responseHeaders, responseBody));
+  });
 
-        try {
-            debug('responseHeaders = %j', responseHeaders);
-            responseBody = parseHttpResponseBody(raw);
-        } catch (e) {
-            debug('statusCode = %s, Parse response body error = %s', statusCode, e.message);
-            deferred.reject(failure(statusCode, e.message));
-            return;
-        }
-
-        if (statusCode >= 100 && statusCode < 200) {
-            deferred.reject(failure(statusCode, 'Can not handle 1xx http status code.'));
-        } else if (statusCode < 100 || statusCode >= 300) {
-            if (responseBody.requestId) {
-                deferred.reject(
-                    failure(
-                        statusCode,
-                        responseBody.message,
-                        responseBody.code,
-                        responseBody.requestId,
-                        responseHeaders.date
-                    )
-                );
-            } else {
-                deferred.reject(failure(statusCode, responseBody));
-            }
-        }
-
-        deferred.resolve(success(responseHeaders, responseBody));
-    });
-
-    return deferred.promise;
+  return deferred.promise;
 };
 
 /* eslint-disable */
 function isXHR2Compatible(obj) {
-    if (typeof Blob !== 'undefined' && obj instanceof Blob) {
-        return true;
-    }
-    if (typeof ArrayBuffer !== 'undefined' && obj instanceof ArrayBuffer) {
-        return true;
-    }
-    if (typeof FormData !== 'undefined' && obj instanceof FormData) {
-        return true;
-    }
+  if (typeof Blob !== 'undefined' && obj instanceof Blob) {
+    return true;
+  }
+  if (typeof ArrayBuffer !== 'undefined' && obj instanceof ArrayBuffer) {
+    return true;
+  }
+  if (typeof FormData !== 'undefined' && obj instanceof FormData) {
+    return true;
+  }
 }
 /* eslint-enable */
 
 HttpClient.prototype._sendRequest = function (req, data) {
-    /* eslint-disable */
-    if (!data) {
-        req.end();
-        return;
-    }
-    if (typeof data === 'string') {
-        data = new Buffer(data);
-    }
-    /* eslint-enable */
+  /* eslint-disable */
+  if (!data) {
+    req.end();
+    return;
+  }
+  if (typeof data === 'string') {
+    data = new Buffer(data);
+  }
+  /* eslint-enable */
 
-    if (Buffer.isBuffer(data) || isXHR2Compatible(data)) {
-        req.write(data);
-        req.end();
-    } else if (data instanceof stream.Readable) {
-        if (!data.readable) {
-            throw new Error('stream is not readable');
-        }
-
-        data.on('data', function (chunk) {
-            req.write(chunk);
-        });
-        data.on('end', function () {
-            req.end();
-        });
-    } else {
-        throw new Error('Invalid body type = ' + typeof data);
+  if (Buffer.isBuffer(data) || isXHR2Compatible(data)) {
+    req.write(data);
+    req.end();
+  } else if (data instanceof stream.Readable) {
+    if (!data.readable) {
+      throw new Error('stream is not readable');
     }
+
+    data.on('data', function (chunk) {
+      req.write(chunk);
+    });
+    data.on('end', function () {
+      req.end();
+    });
+  } else {
+    throw new Error('Invalid body type = ' + typeof data);
+  }
 };
 
 HttpClient.prototype.buildQueryString = function (params) {
-    var urlEncodeStr = require('querystring').stringify(params);
-    // https://en.wikipedia.org/wiki/Percent-encoding
-    return urlEncodeStr.replace(/[()'!~.*\-_]/g, function (char) {
-        return '%' + char.charCodeAt().toString(16);
-    });
+  var urlEncodeStr = require('querystring').stringify(params);
+  // https://en.wikipedia.org/wiki/Percent-encoding
+  return urlEncodeStr.replace(/[()'!~.*\-_]/g, function (char) {
+    return '%' + char.charCodeAt().toString(16);
+  });
 };
 
 HttpClient.prototype._getRequestUrl = function (path, params) {
-    var uri = path;
-    var qs = this.buildQueryString(params);
-    if (qs) {
-        uri += '?' + qs;
-    }
+  var uri = path;
+  var qs = this.buildQueryString(params);
+  if (qs) {
+    uri += '?' + qs;
+  }
 
-    if (/^https?/.test(uri)) {
-        return uri;
-    }
+  if (/^https?/.test(uri)) {
+    return uri;
+  }
 
-    return this.config.endpoint + uri;
+  return this.config.endpoint + uri;
 };
 
 function success(httpHeaders, body) {
-    var response = {};
+  var response = {};
 
-    response[H.X_HTTP_HEADERS] = httpHeaders;
-    response[H.X_BODY] = body;
+  response[H.X_HTTP_HEADERS] = httpHeaders;
+  response[H.X_BODY] = body;
 
-    return response;
+  return response;
 }
 
 function failure(statusCode, message, code, requestId, xBceDate) {
-    var response = {};
+  var response = {};
 
-    response[H.X_STATUS_CODE] = statusCode;
-    response[H.X_MESSAGE] = Buffer.isBuffer(message) ? String(message) : message;
-    if (code) {
-        response[H.X_CODE] = code;
-    }
-    if (requestId) {
-        response[H.X_REQUEST_ID] = requestId;
-    }
-    if (xBceDate) {
-        response[H.X_BCE_DATE] = xBceDate;
-    }
+  response[H.X_STATUS_CODE] = statusCode;
+  response[H.X_MESSAGE] = Buffer.isBuffer(message) ? String(message) : message;
+  if (code) {
+    response[H.X_CODE] = code;
+  }
+  if (requestId) {
+    response[H.X_REQUEST_ID] = requestId;
+  }
+  if (xBceDate) {
+    response[H.X_BCE_DATE] = xBceDate;
+  }
 
-    return response;
+  return response;
 }
 
 module.exports = HttpClient;

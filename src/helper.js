@@ -282,7 +282,7 @@ const isBosHost = function(host)  {
 // CDN域名 ｜ virtualHost
 const isCnameLikeHost = function(host) {
     // CDN加速 <xxx>.cdn.bcebos.com
-	if(DEFAULT_CNAME_LIKE_LIST.some((suffix) => strings.hasSuffix(host.toLowerCase(), suffix))) {
+	if (DEFAULT_CNAME_LIKE_LIST.some((suffix) => strings.hasSuffix(host.toLowerCase(), suffix))) {
         return true;
     }
     // virtual host

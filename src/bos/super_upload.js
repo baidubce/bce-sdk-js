@@ -208,6 +208,14 @@ class SuperUpload {
         uploadId = this.uploadId = response.body.uploadId;
       } catch (error) {
         debug('[start] Multipart upload init failed: %s', error.message);
+        this.state = Enums.STATE.FAILED;
+        const onStateChange = this.onStateChange;
+        if (onStateChange) {
+          onStateChange(Enums.STATE.FAILED, {
+            message: `bce-sdk:super-upload initiateMultipartUpload failed: ${error.message}`,
+            data: []
+          });
+        }
         return [];
       }
     } else {
@@ -566,7 +574,7 @@ class SuperUpload {
    * @param {Number} uploadedPartCount 已上传分片数量
    * @param {Number} nextPartNum 下一个未上传的分片序号
    */
-  __getMicroTasks = function (uploadId, uploadedBytes, uploadedPartCount, nextPartNum) {
+  __getMicroTasks(uploadId, uploadedBytes, uploadedPartCount, nextPartNum) {
     const bucketName = this.bucketName;
     const objectName = this.objectName;
     const ContentLength = this.ContentLength;
@@ -606,7 +614,7 @@ class SuperUpload {
     }
 
     return microTasks;
-  };
+  }
 
   /**
    * 动态调整分片大小，如果剩余文件按照当前partSize分片超出分片数量上限，则动态增加partSize

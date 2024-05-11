@@ -1,4 +1,5 @@
 test
+__tests__
 demo
 docs
 website
@@ -7,6 +8,8 @@ bower_components
 example
 coverage
 
+.DS_Store
+.editorconfig
 .travis.yml
 appveyor.yml
 .prettierrc
