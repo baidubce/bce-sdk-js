@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.0.1-beta.6
+
+_published on 2024-05-14_
+
+- BosClient: support virtual host mode.
+
 ## 1.0.1-beta.4
 
 _published on 2024-05-07_
