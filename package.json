@@ -46,6 +46,7 @@
     "debug": "^3.1.0",
     "filesize": "^10.1.0",
     "lodash": "^4.17.21",
+    "net-browserify": "^0.2.4",
     "process": "^0.11.10",
     "q": "^1.5.1",
     "underscore": "^1.9.1",

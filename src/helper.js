@@ -28,18 +28,18 @@ var net = require('net');
 var MIN_MULTIPART_SIZE = 5 * 1024 * 1024; // 5M
 
 // 分片上传的时候，每个分片的大小
-var PART_SIZE = 1 * 1024 * 1024; // 1M
+var PART_SIZE          = 1 * 1024 * 1024; // 1M
 
-var DATA_TYPE_FILE = 1;
-var DATA_TYPE_BUFFER = 2;
-var DATA_TYPE_STREAM = 3;
-var DATA_TYPE_BLOB = 4;
+var DATA_TYPE_FILE     = 1;
+var DATA_TYPE_BUFFER   = 2;
+var DATA_TYPE_STREAM   = 3;
+var DATA_TYPE_BLOB     = 4;
 
 // cname形式的域名列表
-var DEFAULT_CNAME_LIKE_LIST = ['.cdn.bcebos.com'];
+var DEFAULT_CNAME_LIKE_LIST = [".cdn.bcebos.com"]
 
 exports.omitNull = function (value, key, object) {
-  return value != null;
+    return value != null;
 };
 
 /**
@@ -53,46 +53,54 @@ exports.omitNull = function (value, key, object) {
  * @return {Promise}
  */
 exports.upload = function (client, bucket, object, data, options) {
-  var contentLength = 0;
-  var dataType = -1;
-  if (typeof data === 'string') {
-    // 文件路径
-    // TODO 如果不存在的话，会抛异常，导致程序退出？
-    contentLength = fs.lstatSync(data).size;
-    dataType = DATA_TYPE_FILE;
-  } else if (Buffer.isBuffer(data)) {
-    // Buffer
-    contentLength = data.length;
-    dataType = DATA_TYPE_BUFFER;
-  } else if (data instanceof stream.Readable) {
-    dataType = DATA_TYPE_STREAM;
-  } else if (typeof Blob !== 'undefined' && data instanceof Blob) {
-    // 浏览器里面的对象
-    contentLength = data.size;
-    dataType = DATA_TYPE_BLOB;
-  }
-
-  if (dataType === -1) {
-    throw new Error('Unsupported `data` type.');
-  }
-
-  if (dataType === DATA_TYPE_STREAM) {
-    // XXX options['Content-Length'] 应该呗设置过了吧？
-    // 这种情况无法分片上传，只能直传了
-    return client.putObject(bucket, object, data, options);
-  } else if (contentLength <= MIN_MULTIPART_SIZE) {
-    if (dataType === DATA_TYPE_FILE) {
-      return client.putObjectFromFile(bucket, object, data, options);
-    } else if (dataType === DATA_TYPE_BUFFER) {
-      return client.putObject(bucket, object, data, options);
-    } else if (dataType === DATA_TYPE_BLOB) {
-      return client.putObjectFromBlob(bucket, object, data, options);
+    var contentLength = 0;
+    var dataType = -1;
+    if (typeof data === 'string') {
+        // 文件路径
+        // TODO 如果不存在的话，会抛异常，导致程序退出？
+        contentLength = fs.lstatSync(data).size;
+        dataType = DATA_TYPE_FILE;
     }
-  } else if (contentLength > MIN_MULTIPART_SIZE) {
-    // 开始分片上传
-    debug('%s > %s -> multi-part', contentLength, MIN_MULTIPART_SIZE);
-    return uploadViaMultipart(client, data, dataType, bucket, object, contentLength, PART_SIZE, options);
-  }
+    else if (Buffer.isBuffer(data)) {
+        // Buffer
+        contentLength = data.length;
+        dataType = DATA_TYPE_BUFFER;
+    }
+    else if (data instanceof stream.Readable) {
+        dataType = DATA_TYPE_STREAM;
+    }
+    else if (typeof Blob !== 'undefined' && data instanceof Blob) {
+        // 浏览器里面的对象
+        contentLength = data.size;
+        dataType = DATA_TYPE_BLOB;
+    }
+
+    if (dataType === -1) {
+        throw new Error('Unsupported `data` type.');
+    }
+
+    if (dataType === DATA_TYPE_STREAM) {
+        // XXX options['Content-Length'] 应该呗设置过了吧？
+        // 这种情况无法分片上传，只能直传了
+        return client.putObject(bucket, object, data, options);
+    }
+    else if (contentLength <= MIN_MULTIPART_SIZE) {
+        if (dataType === DATA_TYPE_FILE) {
+            return client.putObjectFromFile(bucket, object, data, options);
+        }
+        else if (dataType === DATA_TYPE_BUFFER) {
+            return client.putObject(bucket, object, data, options);
+        }
+        else if (dataType === DATA_TYPE_BLOB) {
+            return client.putObjectFromBlob(bucket, object, data, options);
+        }
+    }
+    else if (contentLength > MIN_MULTIPART_SIZE) {
+        // 开始分片上传
+        debug('%s > %s -> multi-part', contentLength, MIN_MULTIPART_SIZE);
+        return uploadViaMultipart(client, data, dataType,
+                                  bucket, object, contentLength, PART_SIZE, options);
+    }
 };
 
 /* eslint-disable */
@@ -110,223 +118,217 @@ exports.upload = function (client, bucket, object, data, options) {
  * @return {Promise}
  */
 function uploadViaMultipart(client, data, dataType, bucket, object, size, partSize, options) {
-  var uploadId;
+    var uploadId;
 
-  return client
-    .initiateMultipartUpload(bucket, object, options)
-    .then(function (response) {
-      uploadId = response.body.uploadId;
-      debug('initiateMultipartUpload = %j', response);
+    return client.initiateMultipartUpload(bucket, object, options)
+        .then(function (response) {
+            uploadId = response.body.uploadId;
+            debug('initiateMultipartUpload = %j', response);
 
-      var deferred = Q.defer();
-      var tasks = getTasks(data, uploadId, bucket, object, size, partSize);
-      var state = {
-        lengthComputable: true,
-        loaded: 0,
-        total: tasks.length
-      };
-      async.mapLimit(tasks, 2, uploadPart(client, dataType, state), function (error, results) {
-        if (error) {
-          deferred.reject(error);
-        } else {
-          deferred.resolve(results);
-        }
-      });
-      return deferred.promise;
-    })
-    .then(function (responses) {
-      var parts = u.map(responses, function (response, index) {
-        return {
-          partNumber: index + 1,
-          eTag: response.http_headers.etag
-        };
-      });
-      debug('parts = %j', parts);
-      return client.completeMultipartUpload(bucket, object, uploadId, parts);
-    });
+            var deferred = Q.defer();
+            var tasks = getTasks(data, uploadId, bucket, object, size, partSize);
+            var state = {
+                lengthComputable: true,
+                loaded: 0,
+                total: tasks.length
+            };
+            async.mapLimit(tasks, 2, uploadPart(client, dataType, state), function (error, results) {
+                if (error) {
+                    deferred.reject(error);
+                }
+                else {
+                    deferred.resolve(results);
+                }
+            });
+            return deferred.promise;
+        })
+        .then(function (responses) {
+            var parts = u.map(responses, function (response, index) {
+                return {
+                    partNumber: index + 1,
+                    eTag: response.http_headers.etag
+                };
+            });
+            debug('parts = %j', parts);
+            return client.completeMultipartUpload(bucket, object, uploadId, parts);
+        });
 }
 /* eslint-enable */
 
 function uploadPart(client, dataType, state) {
-  return function (task, callback) {
-    var resolve = function (response) {
-      ++state.loaded;
-      client.emit('progress', state);
-      callback(null, response);
-    };
-    var reject = function (error) {
-      callback(error);
-    };
+    return function (task, callback) {
+        var resolve = function (response) {
+            ++state.loaded;
+            client.emit('progress', state);
+            callback(null, response);
+        };
+        var reject = function (error) {
+            callback(error);
+        };
 
-    if (dataType === DATA_TYPE_FILE) {
-      debug('client.uploadPartFromFile(%j)', u.omit(task, 'data'));
-      return client
-        .uploadPartFromFile(
-          task.bucket,
-          task.object,
-          task.uploadId,
-          task.partNumber,
-          task.partSize,
-          task.data,
-          task.start
-        )
-        .then(resolve, reject);
-    } else if (dataType === DATA_TYPE_BUFFER) {
-      // 没有直接 uploadPartFromBuffer 的接口，借用 DataUrl
-      debug('client.uploadPartFromDataUrl(%j)', u.omit(task, 'data'));
-      var dataUrl = task.data.slice(task.start, task.stop + 1).toString('base64');
-      return client
-        .uploadPartFromDataUrl(task.bucket, task.object, task.uploadId, task.partNumber, task.partSize, dataUrl)
-        .then(resolve, reject);
-    } else if (dataType === DATA_TYPE_BLOB) {
-      debug('client.uploadPartFromBlob(%j)', u.omit(task, 'data'));
-      var blob = task.data.slice(task.start, task.stop + 1);
-      return client
-        .uploadPartFromBlob(task.bucket, task.object, task.uploadId, task.partNumber, task.partSize, blob)
-        .then(resolve, reject);
-    }
-  };
+        if (dataType === DATA_TYPE_FILE) {
+            debug('client.uploadPartFromFile(%j)', u.omit(task, 'data'));
+            return client.uploadPartFromFile(task.bucket, task.object,
+                task.uploadId, task.partNumber, task.partSize,
+                task.data, task.start).then(resolve, reject);
+        }
+        else if (dataType === DATA_TYPE_BUFFER) {
+            // 没有直接 uploadPartFromBuffer 的接口，借用 DataUrl
+            debug('client.uploadPartFromDataUrl(%j)', u.omit(task, 'data'));
+            var dataUrl = task.data.slice(task.start, task.stop + 1).toString('base64');
+            return client.uploadPartFromDataUrl(task.bucket, task.object,
+                task.uploadId, task.partNumber, task.partSize,
+                dataUrl).then(resolve, reject);
+        }
+        else if (dataType === DATA_TYPE_BLOB) {
+            debug('client.uploadPartFromBlob(%j)', u.omit(task, 'data'));
+            var blob = task.data.slice(task.start, task.stop + 1);
+            return client.uploadPartFromBlob(task.bucket, task.object,
+                task.uploadId, task.partNumber, task.partSize,
+                blob).then(resolve, reject);
+        }
+    };
 }
 
 function getTasks(data, uploadId, bucket, object, size, partSize) {
-  var leftSize = size;
-  var offset = 0;
-  var partNumber = 1;
+    var leftSize = size;
+    var offset = 0;
+    var partNumber = 1;
 
-  var tasks = [];
-  while (leftSize > 0) {
-    /* eslint-disable */
-    var xPartSize = Math.min(leftSize, partSize);
-    /* eslint-enable */
-    tasks.push({
-      data: data, // Buffer or Blob
-      uploadId: uploadId,
-      bucket: bucket,
-      object: object,
-      partNumber: partNumber,
-      partSize: xPartSize,
-      start: offset,
-      stop: offset + xPartSize - 1
-    });
+    var tasks = [];
+    while (leftSize > 0) {
+        /* eslint-disable */
+        var xPartSize = Math.min(leftSize, partSize);
+        /* eslint-enable */
+        tasks.push({
+            data: data, // Buffer or Blob
+            uploadId: uploadId,
+            bucket: bucket,
+            object: object,
+            partNumber: partNumber,
+            partSize: xPartSize,
+            start: offset,
+            stop: offset + xPartSize - 1
+        });
 
-    leftSize -= xPartSize;
-    offset += xPartSize;
-    partNumber += 1;
-  }
+        leftSize -= xPartSize;
+        offset += xPartSize;
+        partNumber += 1;
+    }
 
-  return tasks;
+    return tasks;
 }
 
 /**
  * 获取域名不带协议的部分
- * @param {string} host
- * @returns
+ * @param {string} host 
+ * @returns 
  */
-const getDomainWithoutProtocal = function (host) {
-  const url = new URL(host);
-  return {
-    protocal: url.protocal,
-    host: url.host
-  };
-};
+const getDomainWithoutProtocal = function(host) {
+    const url = new URL(host);
+    return {
+        protocal: url.protocal,
+        host: url.host
+    };
+}
 
 /**
  * 获取域名中不带端口号的部分
- * @param {string} host
- * @return {string}
+ * @param {string} host 
+ * @return {string} 
  */
-function _getHostname(originHost) {
-  const url = new URL(originHost);
-
-  return url.hostname;
+function _getHostname(originHost)  {
+    const url = new URL(originHost);
+	
+	return url.hostname;
 }
 
 // virutal host：<bucket>.<region>.bcebos.com
 // custom domain return false
 const isVirtualHost = function (host) {
-  const domain = _getHostname(host);
-  const arr = domain.split('.');
-  if (arr.length !== 4) {
-    return false;
-  }
-  // bucketName rule: 只能包含小写字母、数字和“-”，开头结尾为小写字母和数字，长度在4-63之间
-  // ends with bcebos.com
-  if (!/^[a-z\d][a-z-\d]{2,61}[a-z\d]\.[a-z\d]+\.bcebos\.com$/.test(arr[0])) {
-    return false;
-  }
+    const domain = _getHostname(host)
+    const arr = domain.split(".");
+    if (arr.length !== 4) {
+        return false
+    }
+    // bucketName rule: 只能包含小写字母、数字和“-”，开头结尾为小写字母和数字，长度在4-63之间
+    // ends with bcebos.com
+    if (!/^[a-z\d][a-z-\d]{2,61}[a-z\d]\.[a-z\d]+\.bcebos\.com$/.test(arr[0])) {
+        return false
+    }
 
-  return true;
-};
+    return true;
+}
 
 // 判断是否为ip host
 const isIpHost = function (host) {
-  const domain = _getHostname(host);
-  return net.isIP(domain) > 0;
-};
+    const domain = _getHostname(host)
+    return net.isIP(input) > 0;
+}
 
-// 判断是否为bos默认官方 host
-const isBosHost = function (host) {
-  const domain = _getHostname(host);
-  const arr = domain.split('.');
-  if (arr.length !== 3) {
-    return false;
-  }
-  if (/\.bcebos\.com$/.test(domain)) {
-    return false;
-  }
-  return true;
-};
+// 判断是否为bos默认官方 host 
+const isBosHost = function(host)  {
+	const domain = _getHostname(host);
+    const arr = domain.split(".");
+    if (arr.length !== 3) {
+        return false;
+    }
+    if (/\.bcebos\.com$/.test(domain)) {
+        return false;
+    }
+	return true
+}
 
 // CDN域名 ｜ virtualHost
-const isCnameLikeHost = function (host) {
-  // CDN加速 <xxx>.cdn.bcebos.com
-  if (DEFAULT_CNAME_LIKE_LIST.some((suffix) => strings.hasSuffix(host.toLowerCase(), suffix))) {
-    return true;
-  }
-  // virtual host
-  if (isVirtualHost(host)) {
-    return true;
-  }
-  return false;
-};
+const isCnameLikeHost = function(host) {
+    // CDN加速 <xxx>.cdn.bcebos.com
+	if (DEFAULT_CNAME_LIKE_LIST.some((suffix) => strings.hasSuffix(host.toLowerCase(), suffix))) {
+        return true;
+    }
+    // virtual host
+    if (isVirtualHost(host)) {
+		return true
+	}
+	return false
+}
 
-const needCompatibleBucketAndEndpoint = function (bucket, endpoint) {
-  if (!bucket || bucket === '') {
-    return false;
-  }
-  // virtual host
-  if (!isVirtualHost(endpoint)) {
-    return false;
-  }
-  // <bucket>.xxx
-  if (endpoint.split('.')[0] === bucket) {
-    return false;
-  }
-  // bucket from api and from endpoint is different
-  // bucket = AAAA，endpoint = BBBB.bcebos.com
-  // if like so, just pass to server and it will handle
-  return true;
-};
+const needCompatibleBucketAndEndpoint = function(bucket, endpoint) {
+	if (!bucket || bucket === "") {
+		return false
+	}
+    // virtual host
+	if (!isVirtualHost(endpoint)) {
+		return false
+	}
+    // <bucket>.xxx
+	if (endpoint.split(".")[0] === bucket) {
+		return false
+	}
+	// bucket from api and from endpoint is different
+    // bucket = AAAA，endpoint = BBBB.bcebos.com
+    // if like so, just pass to server and it will handle
+	return true
+}
 
 /**
  * replace endpoint by bucket, only effective when two bucket are in same region, otherwise server return NoSuchBucket error
- * @param {*} bucket
- * @param {*} endpoint
- * @returns
+ * @param {*} bucket 
+ * @param {*} endpoint 
+ * @returns 
  */
-const replaceEndpointByBucket = function (bucket, endpoint) {
-  const {protocal, host} = getDomainWithoutProtocal(endpoint);
-  const arr = host.split('.');
-  arr[0] = protocal + bucket;
-  return arr.join('.');
-};
+const replaceEndpointByBucket = function(bucket, endpoint) {
+    const {protocal, host} = getDomainWithoutProtocal(endpoint);
+	const arr = host.split(".");
+	arr[0] = protocal + bucket;
+	return arr.join(".")
+}
 
-exports.domainUtils = {
-  getDomainWithoutProtocal,
-  isVirtualHost,
-  isIpHost,
-  isBosHost,
-  isCnameLikeHost,
-  needCompatibleBucketAndEndpoint,
-  replaceEndpointByBucket
-};
+exports.domainUtils =  {
+    getDomainWithoutProtocal,
+    isVirtualHost,
+    isIpHost,
+    isBosHost,
+    isCnameLikeHost,
+    needCompatibleBucketAndEndpoint,
+    replaceEndpointByBucket
+}

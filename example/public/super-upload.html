@@ -1,0 +1,391 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>SuperUpload测试</title>
+    <link rel="stylesheet" type="" href="sdk.css" />
+    <link rel="stylesheet" type="" href="cxd.css" />
+    <link rel="stylesheet" href="iconfont.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-notify@1.0.4/dist/simple-notify.css" />
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root">
+      <input type="file" id="file" />
+    </div>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.8/axios.min.js"
+      integrity="sha512-PJa3oQSLWRB7wHZ7GQ/g+qyv6r4mbuhmiDb8BjSFZ8NZ2a42oTtAq5n0ucWAwcQDlikAtkub+tPVCw4np27WCg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+      integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-notify@1.0.4/dist/simple-notify.min.js"></script>
+    <script type="text/javascript" src="sdk.js"></script>
+    <script type="text/javascript" src="baidubce-sdk.bundle.js"></script>
+    <script>
+      (async function () {
+        let p1 = 0;
+        let p2 = 0;
+        const amis = amisRequire('amis/embed');
+        const amisJSON = {
+          type: 'page',
+          body: [
+            {
+              type: 'alert',
+              title: 'CORS配置',
+              body: '如果接口报CORS错误，请开启对应存储桶的<a href="https://cloud.baidu.com/doc/BOS/s/Dk6kqw1g8", target="__blank">CORS配置</a>',
+              level: 'warning',
+              showIcon: true,
+              className: 'mb-3'
+            },
+            {
+              type: 'custom',
+              name: 'file',
+              onMount: (dom, value, onChange, props) => {
+                const input = document.createElement('input');
+                input.setAttribute('type', 'file');
+                input.setAttribute('id', 'file');
+
+                dom.appendChild(input);
+              }
+            },
+            {
+              type: 'tpl',
+              tpl: '<h3>前端上传</h3>'
+            },
+            {
+              type: 'progress',
+              value: '${p1}',
+              style: {
+                marginTop: '20px',
+                width: '500px'
+              }
+            },
+            {
+              type: 'flex',
+              justify: 'flex-start',
+              style: {
+                marginTop: '20px'
+              },
+              items: [
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '获取实例',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: getInstance
+                },
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '上传',
+                  icon: 'fa-solid fa-cloud-arrow-up',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: start
+                },
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '暂停',
+                  icon: 'fa-solid fa-pause',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: pause
+                },
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '恢复',
+                  icon: 'fa-solid fa-play',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: resume
+                },
+                {
+                  type: 'button',
+                  level: 'danger',
+                  label: '取消',
+                  icon: 'fa-solid fa-xmark',
+                  onClick: cancel
+                }
+              ]
+            },
+            {
+              type: 'divider',
+              className: 'border-2'
+            },
+            {
+              type: 'tpl',
+              tpl: '<h3>服务端上传</h3>'
+            },
+            // {
+            //   type: 'progress',
+            //   value: '${p2}',
+            //   style: {
+            //     marginTop: '20px'
+            //   }
+            // },
+            {
+              type: 'flex',
+              justify: 'flex-start',
+              style: {
+                marginTop: '20px'
+              },
+              items: [
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '获取实例',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: getInstanceApi
+                },
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '初始化SuperUpload',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: initApi
+                },
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '上传',
+                  icon: 'fa-solid fa-cloud-arrow-up',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: startApi
+                },
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '暂停',
+                  icon: 'fa-solid fa-pause',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: pauseApi
+                },
+                {
+                  type: 'button',
+                  level: 'primary',
+                  label: '恢复',
+                  icon: 'fa-solid fa-play',
+                  style: {
+                    marginRight: '10px'
+                  },
+                  onClick: resumeApi
+                },
+                {
+                  type: 'button',
+                  level: 'danger',
+                  label: '取消',
+                  icon: 'fa-solid fa-xmark',
+                  onClick: cancelApi
+                }
+              ]
+            }
+          ]
+        };
+        const amisScoped = amis.embed('#root', amisJSON, {data: {p1, p2}});
+        const bucketName = 'lurunze-test';
+        function pushNotify({status, title, text}) {
+          new Notify({
+            status: status || 'success',
+            title: title,
+            text: text,
+            distance: 200,
+            position: 'x-center'
+          });
+        }
+
+        /* 前端上传用例 */
+        let config;
+
+        try {
+          config = JSON.parse(sessionStorage.getItem('_sdk_config_'));
+        } catch (error) {}
+
+        const client = new window.baidubce.sdk.BosClient({
+          endpoint: config.endpoint,
+          credentials: {
+            ak: config.ak,
+            sk: config.sk
+          }
+        });
+
+        // 实例
+        let SuperUpload;
+
+        function getInstance() {
+          console.log(SuperUpload);
+          if (SuperUpload) {
+            pushNotify({title: '获取实例信息', text: '实例信息获取成功'});
+          } else {
+            pushNotify({status: 'error', title: '获取实例信息', text: '实例信息获取失败'});
+          }
+        }
+
+        async function start() {
+          const files = $('#file')?.[0]?.files;
+
+          if (!files || files.length === 0) {
+            console.error('请选择文件');
+            pushNotify({status: 'error', title: '上传', text: '请先选择文件'});
+            return;
+          }
+
+          const file = files[0];
+          let reader = new FileReader();
+          let rs = reader.readAsArrayBuffer(file);
+          let blob = null;
+
+          reader.onload = async e => {
+            if (typeof e.target.result === 'object') {
+              blob = new Blob([e.target.result]);
+            } else {
+              blob = e.target.result;
+            }
+
+            SuperUpload = client.putSuperObject({
+              bucketName,
+              objectName: file.name,
+              ContentLength: file.size,
+              ContentType: file.type,
+              data: blob,
+              partConcurrency: 2,
+              onProgress: options => {
+                const {speed, progress, uploadedBytes, totalBytes} = options;
+
+                console.log(options);
+                amisScoped.updateProps({
+                  data: {p1: progress * 100}
+                });
+              },
+              onStateChange: (state, data) => {
+                if (state === 'completed') {
+                  pushNotify({title: '上传', text: '上传成功'});
+                  console.log(data);
+                } else if (state === 'failed') {
+                  pushNotify({status: 'error', title: '上传失败', text: data.message});
+                } else if (state === 'cancelled') {
+                  pushNotify({title: '上传', text: '上传任务取消'});
+                } else if (state === 'inited') {
+                  pushNotify({title: '上传', text: '上传任务初始化完成'});
+                } else if (state === 'running') {
+                  pushNotify({title: '上传', text: '上传任务开始运行...'});
+                } else if (state === 'paused') {
+                  pushNotify({title: '上传', text: '上传任务已暂停'});
+                }
+              }
+            });
+
+            const tasks = await SuperUpload.start();
+            console.log('[start] tasks: ', tasks);
+          };
+        }
+
+        function pause() {
+          if (SuperUpload) {
+            SuperUpload.pause();
+          } else {
+            pushNotify({status: 'error', title: '暂停', text: '实例不存在'});
+          }
+        }
+
+        function resume() {
+          if (SuperUpload) {
+            SuperUpload.resume();
+          } else {
+            pushNotify({status: 'error', title: '恢复', text: '实例不存在'});
+          }
+        }
+
+        async function cancel() {
+          if (SuperUpload) {
+            const result = await SuperUpload.cancel();
+
+            if (result) {
+              SuperUpload = undefined;
+              p1 = 0;
+
+              amisScoped.updateProps({
+                data: {p1: 0}
+              });
+            }
+          } else {
+            pushNotify({status: 'error', title: '取消任务', text: '实例不存在'});
+          }
+        }
+
+        /* 服务端上传用例 */
+
+        const api = axios.create({
+          baseURL: 'http://localhost:3000',
+          timeout: 3000,
+          headers: {
+            'x-token':
+              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbmRwb2ludCI6Imh0dHA6Ly9iai5iY2Vib3MuY29tIiwiY3JlZGVudGlhbHMiOnsiYWsiOiJkY2M5ODk2YTBkOGI0NjNjOGRmZTgyMTI4ZGJhZWNjMiIsInNrIjoiODQ5Y2ZiYTc1ZTZkNDRhM2E1MzBmZWY0MGI4ZWZjMzAifSwiaWF0IjoxNzEwNTA1MTY1LCJleHAiOjE3MTgyODExNjV9.-0u8SNOSmOMbpLwx9ifQUr-EcP9Ht3HEq4wIVwBeBV0'
+          }
+        });
+
+        async function getInstanceApi() {
+          const response = await api.get('/api/putSuperObject/getInstance');
+          console.log(response.data);
+        }
+
+        async function initApi() {
+          const response = await api.post('/api/putSuperObject/init', {
+            bucketName,
+            // 对象名称
+            objectName: '',
+            // 文件路径
+            data: '',
+            partConcurrency: 2
+          });
+          console.log(response.data);
+        }
+
+        async function startApi() {
+          const response = await api.post('/api/putSuperObject/start');
+          console.log(response.data?.data);
+        }
+
+        async function pauseApi() {
+          const response = await api.post('/api/putSuperObject/pause');
+          console.log(response.data);
+        }
+
+        async function resumeApi() {
+          const response = await api.post('/api/putSuperObject/resume');
+          console.log(response.data);
+        }
+
+        async function cancelApi() {
+          const response = await api.post('/api/putSuperObject/cancel');
+          console.log(response.data);
+        }
+      })();
+    </script>
+  </body>
+</html>

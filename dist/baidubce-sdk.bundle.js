@@ -57402,6 +57402,7 @@ module.exports={
     "debug": "^3.1.0",
     "filesize": "^10.1.0",
     "lodash": "^4.17.21",
+    "net-browserify": "^0.2.4",
     "process": "^0.11.10",
     "q": "^1.5.1",
     "underscore": "^1.9.1",
@@ -57429,6 +57430,7 @@ module.exports={
     "uglify-js": "^3.17.4"
   }
 }
+
 },{}],413:[function(require,module,exports){
 "use strict";
 
@@ -62839,7 +62841,7 @@ var DATA_TYPE_STREAM = 3;
 var DATA_TYPE_BLOB = 4;
 
 // cname形式的域名列表
-var DEFAULT_CNAME_LIKE_LIST = ['.cdn.bcebos.com'];
+var DEFAULT_CNAME_LIKE_LIST = [".cdn.bcebos.com"];
 exports.omitNull = function (value, key, object) {
   return value != null;
 };
@@ -62996,8 +62998,8 @@ function getTasks(data, uploadId, bucket, object, size, partSize) {
 
 /**
  * 获取域名不带协议的部分
- * @param {string} host
- * @returns
+ * @param {string} host 
+ * @returns 
  */
 var getDomainWithoutProtocal = function getDomainWithoutProtocal(host) {
   var url = new URL(host);
@@ -63009,8 +63011,8 @@ var getDomainWithoutProtocal = function getDomainWithoutProtocal(host) {
 
 /**
  * 获取域名中不带端口号的部分
- * @param {string} host
- * @return {string}
+ * @param {string} host 
+ * @return {string} 
  */
 function _getHostname(originHost) {
   var url = new URL(originHost);
@@ -63021,7 +63023,7 @@ function _getHostname(originHost) {
 // custom domain return false
 var isVirtualHost = function isVirtualHost(host) {
   var domain = _getHostname(host);
-  var arr = domain.split('.');
+  var arr = domain.split(".");
   if (arr.length !== 4) {
     return false;
   }
@@ -63036,13 +63038,13 @@ var isVirtualHost = function isVirtualHost(host) {
 // 判断是否为ip host
 var isIpHost = function isIpHost(host) {
   var domain = _getHostname(host);
-  return net.isIP(domain) > 0;
+  return net.isIP(input) > 0;
 };
 
-// 判断是否为bos默认官方 host
+// 判断是否为bos默认官方 host 
 var isBosHost = function isBosHost(host) {
   var domain = _getHostname(host);
-  var arr = domain.split('.');
+  var arr = domain.split(".");
   if (arr.length !== 3) {
     return false;
   }
@@ -63067,7 +63069,7 @@ var isCnameLikeHost = function isCnameLikeHost(host) {
   return false;
 };
 var needCompatibleBucketAndEndpoint = function needCompatibleBucketAndEndpoint(bucket, endpoint) {
-  if (!bucket || bucket === '') {
+  if (!bucket || bucket === "") {
     return false;
   }
   // virtual host
@@ -63075,7 +63077,7 @@ var needCompatibleBucketAndEndpoint = function needCompatibleBucketAndEndpoint(b
     return false;
   }
   // <bucket>.xxx
-  if (endpoint.split('.')[0] === bucket) {
+  if (endpoint.split(".")[0] === bucket) {
     return false;
   }
   // bucket from api and from endpoint is different
@@ -63086,17 +63088,17 @@ var needCompatibleBucketAndEndpoint = function needCompatibleBucketAndEndpoint(b
 
 /**
  * replace endpoint by bucket, only effective when two bucket are in same region, otherwise server return NoSuchBucket error
- * @param {*} bucket
- * @param {*} endpoint
- * @returns
+ * @param {*} bucket 
+ * @param {*} endpoint 
+ * @returns 
  */
 var replaceEndpointByBucket = function replaceEndpointByBucket(bucket, endpoint) {
   var _getDomainWithoutProt = getDomainWithoutProtocal(endpoint),
     protocal = _getDomainWithoutProt.protocal,
     host = _getDomainWithoutProt.host;
-  var arr = host.split('.');
+  var arr = host.split(".");
   arr[0] = protocal + bucket;
-  return arr.join('.');
+  return arr.join(".");
 };
 exports.domainUtils = {
   getDomainWithoutProtocal: getDomainWithoutProtocal,
