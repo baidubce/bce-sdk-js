@@ -123,21 +123,21 @@ BosClient.prototype.generatePresignedUrl = function (
   config = u.extend({}, this.config, config);
   bucketName = config.cname_enabled ? '' : bucketName;
 
-  const endpoint = config.endpoint;
+  var endpoint = config.endpoint;
   // 使用的是自定义域名 / virtual-host
   if (domainUtils.isCnameLikeHost(endpoint) || config.cname_enabled) {
       if (domainUtils.needCompatibleBucketAndEndpoint(bucketName, endpoint)) {
           // bucket from api and from endpoint is different
-          config.endpoint = domainUtils.replaceEndpointByBucket(bucketName, endpoint);
+          endpoint = domainUtils.replaceEndpointByBucket(bucketName, endpoint);
       }
   }
   else {
       // 非ip/bns，pathStyleEnable不为true，强制转为pathStyle
       // 否则保持原状
       if (!config.pathStyleEnable && !domainUtils.isIpHost(endpoint)) {
-          if (domainUtils.isBosHost(endpoint)) {
-              const {protocal, host} = domainUtils.getDomainWithoutProtocal(endpoint);
-              config.endpoint = protocal + bucketName + '.' + host;
+          if (bucketName && domainUtils.isBosHost(endpoint)) {
+              const {protocol, host} = domainUtils.getDomainWithoutProtocal(endpoint);
+              endpoint = protocol + '//' + bucketName + '.' + host;
           }
       }
   }
@@ -148,14 +148,14 @@ BosClient.prototype.generatePresignedUrl = function (
     .normalize(
       path.join(
         config.removeVersionPrefix ? '/' : '/v1',
-        /\.[\w\-]+\.bcebos\.com$/.test(config.endpoint) ? '' : strings.normalize(bucketName || ''),
+        /\.[\w\-]+\.bcebos\.com$/.test(endpoint) ? '' : strings.normalize(bucketName || ''),
         strings.normalize(key || '', false)
       )
     )
     .replace(/\\/g, '/');
 
   headers = headers || {};
-  headers.Host = require('url').parse(config.endpoint).host;
+  headers.Host = require('url').parse(endpoint).host;
 
   var credentials = config.credentials;
   var auth = new Auth(credentials.ak, credentials.sk);
@@ -177,7 +177,7 @@ BosClient.prototype.generatePresignedUrl = function (
 
   params.authorization = authorization;
 
-  return util.format('%s%s?%s', config.endpoint, resource, qs.encode(params));
+  return util.format('%s%s?%s', endpoint, resource, qs.encode(params));
 };
 
 BosClient.prototype.generateUrl = function (bucketName, key, pipeline, cdn, config) {
@@ -376,7 +376,19 @@ BosClient.prototype.deleteBucketEncryption = function (bucketName, options) {
   });
 };
 
-// BosClient.prototype.getBucketStorageclass =
+BosClient.prototype.getBucketStorageclass = function (bucketName, options) {
+  options = options || {};
+  if (!bucketName) {
+    throw new TypeError('bucketName should not be empty.');
+  }
+
+  return this.sendRequest('GET', {
+    bucketName: bucketName,
+    params: {storageClass: ''},
+    config: options.config
+  });
+};
+
 BosClient.prototype.putBucketStorageclass = function (bucketName, storageClass, options) {
   options = options || {};
   var headers = {};
@@ -635,7 +647,6 @@ BosClient.prototype.listBucketReplication = function (bucketName, options) {
 
 BosClient.prototype.listObjects = function (bucketName, options) {
   options = options || {};
-
   var params = u.extend({maxKeys: 1000}, u.pick(options, 'maxKeys', 'prefix', 'marker', 'delimiter'));
 
   return this.sendRequest('GET', {
@@ -1716,22 +1727,24 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
     outputStream: null
   };
 
-  const endpoint = this.config.endpoint;
+  var endpoint = this.config.endpoint;
+  const bucketName = varArgs.bucketName;
   // 使用的是自定义域名 / virtual-host
   if (domainUtils.isCnameLikeHost(endpoint) || this.config.cname_enabled) {
       // if virtual host endpoint and bucket is not empty, compatible bucket and endpoint
       if (domainUtils.needCompatibleBucketAndEndpoint(bucketName, endpoint)) {
           // bucket from api and from endpoint is different
-          this.config.endpoint = domainUtils.replaceEndpointByBucket(bucketName, endpoint);
+          endpoint = domainUtils.replaceEndpointByBucket(bucketName, endpoint);
       }
   }
   else {
       // 非ip/bns，pathStyleEnable不为true，强制转为pathStyle
       // 否则保持原状
       if (!this.config.pathStyleEnable && !domainUtils.isIpHost(endpoint)) {
-          if (domainUtils.isBosHost(endpoint)) {
-              const {protocal, host} = domainUtils.getDomainWithoutProtocal(endpoint);
-              this.config.endpoint = protocal + bucketName + '.' + host;
+           // service级别的接口不需要转换
+          if (bucketName && domainUtils.isBosHost(endpoint)) {
+              const {protocol, host} = domainUtils.getDomainWithoutProtocal(endpoint);
+              endpoint = protocol + '//' + bucketName + '.' + host;
           }
       }
   }
@@ -1739,7 +1752,7 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
   varArgs.bucketName = this.config.cname_enabled ? '' : varArgs.bucketName;
   var args = u.extend(defaultArgs, varArgs);
 
-  var config = u.extend({}, this.config, args.config);
+  var config = u.extend({}, this.config, args.config, {endpoint});
   var resource =
     requestUrl ||
     path
@@ -1755,7 +1768,6 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
   if (config.sessionToken) {
     args.headers[H.SESSION_TOKEN] = config.sessionToken;
   }
-
   return this.sendHTTPRequest(httpMethod, resource, args, config);
 };
 
