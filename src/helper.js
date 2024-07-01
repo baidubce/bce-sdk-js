@@ -224,7 +224,7 @@ function getTasks(data, uploadId, bucket, object, size, partSize) {
 const getDomainWithoutProtocal = function (host) {
   const url = new URL(host);
   return {
-    protocal: url.protocal,
+    protocol: url.protocol,
     host: url.host
   };
 };
@@ -281,7 +281,7 @@ const isBosHost = function (host) {
   if (arr.length !== 3) {
     return false;
   }
-  if (/\.bcebos\.com$/.test(domain)) {
+  if (!/\.bcebos\.com$/.test(domain)) {
     return false;
   }
   return true;
@@ -325,9 +325,9 @@ const needCompatibleBucketAndEndpoint = function (bucket, endpoint) {
  * @returns
  */
 const replaceEndpointByBucket = function (bucket, endpoint) {
-  const {protocal, host} = getDomainWithoutProtocal(endpoint);
+  const {protocol, host} = getDomainWithoutProtocal(endpoint);
   const arr = host.split('.');
-  arr[0] = protocal + bucket;
+  arr[0] = protocol + bucket;
   return arr.join('.');
 };
 
