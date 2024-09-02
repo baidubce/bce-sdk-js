@@ -2,7 +2,7 @@ import {BosClient, Auth, Q, STS, MimeType} from '../index';
 const defautlBosConfig = (globalThis as any).__config__.bos;
 const bosConfig = {
     endpoint: 'https://bj.bcebos.com',
-    credentials: defautlBosConfig.credentials,,
+    credentials: defautlBosConfig.credentials,
     bucket: 'wcc-chengdu',
     region1: 'cd',
     bucket2: 'wcc-wuhan',

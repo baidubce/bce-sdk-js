@@ -44,3 +44,4 @@ exports.TsdbAdminClient = require('./src/tsdb_admin_client');
 exports.CfcClient = require('./src/cfc_client');
 exports.BtsClient = require('./src/bts_client');
 exports.IoTClient = require('./src/iot_client');
+exports.AihcClient = require('./src/aihc_client');
