@@ -38,6 +38,7 @@ var mimeTypes = {
     'ser': 'application/java-serialized-object',
     'class': 'application/java-vm',
     'js': 'application/javascript',
+    'mjs': 'application/javascript',
     'json': 'application/json',
     'jsonml': 'application/jsonml+json',
     'lostxml': 'application/lost+xml',
