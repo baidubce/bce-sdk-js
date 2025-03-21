@@ -1727,7 +1727,7 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
   var endpoint = this.config.endpoint;
 
   const bucketName = varArgs.bucketName;
-  const region = varArgs.config ? varArgs.config.region : this.config.region;
+  const region = varArgs.config ? varArgs.config.region : '';
   const localRemoveVersionPrefix = varArgs.config ? varArgs.config.removeVersionPrefix : false;
   const versionPrefix = localRemoveVersionPrefix || this.config.removeVersionPrefix ? '/' : '/v1';
 

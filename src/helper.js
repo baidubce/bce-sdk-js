@@ -363,7 +363,6 @@ const handleEndpoint = function ({
   if (customGenerateUrl) {
     return customGenerateUrl(bucketName, region);
   }
-
   
   // 使用的是自定义域名 / virtual-host
   if (isCnameLikeHost(resolvedEndpoint) || cname_enabled) {
