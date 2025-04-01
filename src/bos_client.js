@@ -124,6 +124,7 @@ BosClient.prototype.generatePresignedUrl = function (
   bucketName = config.cname_enabled ? '' : bucketName;
 
   var endpoint = config.endpoint;
+  var pathStyleEnable = !!domainUtils.isIpHost(endpoint) || config.pathStyleEnable;
 
   // the endpoint provided in config, don't need to generate it by region
   endpoint = domainUtils.handleEndpoint({
@@ -131,7 +132,7 @@ BosClient.prototype.generatePresignedUrl = function (
     endpoint,
     protocol: config.protocol,
     cname_enabled: config.cname_enabled,
-    pathStyleEnable: config.pathStyleEnable,
+    pathStyleEnable,
     customGenerateUrl: config.customGenerateUrl
   });
 
@@ -141,7 +142,7 @@ BosClient.prototype.generatePresignedUrl = function (
     .normalize(
       path.join(
         config.removeVersionPrefix ? '/' : '/v1',
-        !config.pathStyleEnable ? '' : strings.normalize(bucketName || ''),
+        !pathStyleEnable ? '' : strings.normalize(bucketName || ''),
         strings.normalize(key || '', false)
       )
     )
@@ -1743,6 +1744,8 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
       ? this.config.customGenerateUrl
       : undefined;
 
+  var pathStyleEnable = !!domainUtils.isIpHost(endpoint) || this.config.pathStyleEnable;
+
   // provide the method for generating url
   if (typeof customGenerateUrl === 'function') {
     endpoint = customGenerateUrl(bucketName, region);
@@ -1756,7 +1759,7 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
       region,
       protocol: this.config.protocol,
       cname_enabled: this.config.cname_enabled,
-      pathStyleEnable: this.config.pathStyleEnable
+      pathStyleEnable
     });
 
     var resource =
@@ -1766,7 +1769,7 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
           path.join(
             versionPrefix ? '/' : '/v1',
             // if pathStyleEnable is true
-            !this.config.pathStyleEnable ? '' : strings.normalize(varArgs.bucketName || ''),
+            !pathStyleEnable ? '' : strings.normalize(varArgs.bucketName || ''),
             strings.normalize(varArgs.key || '', false)
           )
         )
