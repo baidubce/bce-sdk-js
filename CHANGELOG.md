@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.0.3-beta.9
+
+_published on 2025-03-24_
+
+- fix: custom gloal config `endpoint` mistakenly overwritten by bj endpoint;
+
 ## 1.0.3-beta.8
 
 _published on 2025-02-12_

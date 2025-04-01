@@ -58609,7 +58609,7 @@ exports.createContext = Script.createContext = function (context) {
 },{"indexof":168}],426:[function(require,module,exports){
 module.exports={
   "name": "@baiducloud/sdk",
-  "version": "1.0.3-beta.8",
+  "version": "1.0.3-beta.9",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "browser": {
@@ -62005,7 +62005,10 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
   };
   var endpoint = this.config.endpoint;
   var bucketName = varArgs.bucketName;
-  var region = varArgs.config ? varArgs.config.region : this.config.region;
+  /**
+   * 优先使用API级别传入的region配置，如果未设置，则使用全局endpoint继续处理
+   */
+  var region = varArgs.config ? varArgs.config.region : '';
   var localRemoveVersionPrefix = varArgs.config ? varArgs.config.removeVersionPrefix : false;
   var versionPrefix = localRemoveVersionPrefix || this.config.removeVersionPrefix ? '/' : '/v1';
   varArgs.bucketName = this.config.cname_enabled ? '' : bucketName;
