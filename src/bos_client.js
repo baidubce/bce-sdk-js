@@ -77,7 +77,6 @@ var IMAGE_DOMAIN = 'bceimg.com';
  * @typedef {import('./http_client.js').BceConfig} BceConfig
  */
 
-
 /**
  * Options操作的配置选项
  *
@@ -697,7 +696,10 @@ BosClient.prototype.listObjects = function (bucketName, options) {
  */
 BosClient.prototype.listObjectVersions = function (bucketName, options) {
   options = options || {};
-  var params = u.extend({maxKeys: 1000}, u.pick(options, 'maxKeys', 'prefix', 'marker', 'delimiter', 'versionIdMarker'));
+  var params = u.extend(
+    {maxKeys: 1000},
+    u.pick(options, 'maxKeys', 'prefix', 'marker', 'delimiter', 'versionIdMarker')
+  );
   params.versions = '';
 
   return this.sendRequest('GET', {
@@ -926,20 +928,22 @@ BosClient.prototype.getBucketLocation = function (bucketName, options) {
 BosClient.prototype.deleteMultipleObjects = function (bucketName, objects, options) {
   options = options || {};
 
-  const body = objects.map(file => {
-    if (typeof file === 'string') {
-      return {key: file};
-    } else if (typeof file === 'object') {
-      const fileObject = {key: file.key};
+  const body = objects
+    .map((file) => {
+      if (typeof file === 'string') {
+        return {key: file};
+      } else if (typeof file === 'object') {
+        const fileObject = {key: file.key};
 
-      if (file.versionId && typeof file.versionId === 'string') {
-        fileObject.versionId = file.versionId;
+        if (file.versionId && typeof file.versionId === 'string') {
+          fileObject.versionId = file.versionId;
+        }
+        return fileObject;
+      } else {
+        return null;
       }
-      return fileObject;
-    } else {
-      return null;
-    }
-  }).filter(file => file != null);
+    })
+    .filter((file) => file != null);
 
   return this.sendRequest('POST', {
     bucketName: bucketName,
@@ -961,7 +965,14 @@ BosClient.prototype.deleteMultipleObjects = function (bucketName, objects, optio
  *
  * 多版本示例:
  * ```js
+ * // 永久删除指定版本的Object
  * const response = await client.deleteObject("Bucket", "ObjectName", {versionId: 'AISQpTmwRHU='});
+ *
+ * // 临时删除当前版本的Object（不指定versionId），新增版本ID为"null"的Object
+ * const response = await client.deleteObject("Bucket", "ObjectName");
+ *
+ * // 删除版本ID为"null"的Object
+ * const response = await client.deleteObject("Bucket", "ObjectName", {versionId: 'null'});
  * ```
  *
  * @doc https://cloud.baidu.com/doc/BOS/s/bkc5tsslq
@@ -977,19 +988,15 @@ BosClient.prototype.deleteObject = function (bucketName, key, options) {
     bucketName: bucketName,
     key: key,
     config: options.config
-  }
+  };
 
   if (options.versionId && typeof options.versionId === 'string') {
     reqArgs.params = {
       versionId: options.versionId
-    }
+    };
   }
 
-  return this.sendRequest('DELETE', {
-    bucketName: bucketName,
-    key: key,
-    config: options.config
-  });
+  return this.sendRequest('DELETE', reqArgs);
 };
 
 /**
@@ -1221,7 +1228,7 @@ BosClient.prototype.getObject = function (bucketName, key, range, options) {
     ),
     config: options.config,
     outputStream: outputStream
-  }
+  };
 
   /** 多版本文件的版本ID */
   if (options.versionId && typeof options.versionId === 'string') {
@@ -1348,7 +1355,7 @@ BosClient.prototype.copyObject = function (sourceBucketName, sourceKey, targetBu
   options.headers['x-bce-copy-source'] = strings.normalize(util.format('/%s/%s', sourceBucketName, sourceKey), false);
   /** 如果指定了versionId参数，则将versionId拼接到copy-source参数中 */
   if (options.versionId) {
-    options.headers['x-bce-copy-source'] += `?versionId=${options.versionId}`
+    options.headers['x-bce-copy-source'] += `?versionId=${options.versionId}`;
   }
 
   if (u.has(options.headers, 'ETag')) {
@@ -2581,7 +2588,6 @@ BosClient.prototype.completeBucketObjectLock = function (bucketName, options) {
   }
 
   options = this._checkOptions(options || {});
-
 
   return this.sendRequest('POST', {
     bucketName: bucketName,
