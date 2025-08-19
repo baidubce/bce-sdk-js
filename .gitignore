@@ -9,3 +9,4 @@ test.js
 test/sdk/BigBuckBunny_320x180.mp4
 .DS_Store
 .vscode
+test/.index.test.js

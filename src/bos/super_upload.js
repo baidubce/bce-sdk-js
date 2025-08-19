@@ -158,8 +158,9 @@ class SuperUpload {
     this.__queue.error((error, task) => {
       debug('[queue] super upload queue task error: %j, task: %j', error, task);
     });
-
-    // 任务状态
+    /** 记录上传过程中的HTTP请求实例，用于后续取消任务 */
+    this.__pendingRequests = new Set();
+    /** 任务状态 */
     this.state = Enums.STATE.INITED;
 
     const onStateChange = this.onStateChange;
@@ -281,7 +282,22 @@ class SuperUpload {
       return false;
     }
 
+    /* 暂停队列 */
     this.__queue.pause();
+    /** 中断所有正在进行的请求 */
+    if (this.__pendingRequests && this.__pendingRequests.size > 0) {
+      for (const req of this.__pendingRequests) {
+        if (typeof req.abort === 'function') {
+          try {
+            req.abort();
+          } catch (e) {
+            debug('[pause] abort error: %O', e);
+          }
+        }
+      }
+      this.__pendingRequests.clear();
+    }
+
     this.state = Enums.STATE.PAUSED;
     const onStateChange = this.onStateChange;
     if (onStateChange) {
@@ -348,6 +364,20 @@ class SuperUpload {
     try {
       // 先暂停队列，再清空分片任务
       this.__queue.pause();
+
+      /** 中断所有正在进行的请求 */
+      if (this.__pendingRequests && this.__pendingRequests.size > 0) {
+        for (const req of this.__pendingRequests) {
+          if (typeof req.abort === 'function') {
+            try {
+              req.abort();
+            } catch (e) {
+              debug('[cancel] abort error: %O', e);
+            }
+          }
+        }
+        this.__pendingRequests.clear();
+      }
       this.__queue.kill();
       const response = await client.abortMultipartUpload(bucketName, objectName, uploadId);
 
@@ -649,6 +679,7 @@ class SuperUpload {
     return function (task, callback) {
       const {start, partSize, partNumber, uploadId} = task;
       let resPromise;
+      let resInstance;
       let startTime = performance.now();
 
       // 任务取消就不执行运行中的分片任务了
@@ -664,7 +695,7 @@ class SuperUpload {
       }
 
       if (dataType === Enums.DATATYPE.File) {
-        resPromise = client.uploadPartFromFile(
+        const [rp, ri] = client.uploadPartFromFile(
           bucketName,
           objectName,
           uploadId,
@@ -673,25 +704,44 @@ class SuperUpload {
           task.data,
           start,
           {
-            [H.CONTENT_LENGTH]: partSize
+            [H.CONTENT_LENGTH]: partSize,
+            config: {
+              requestInstance: true
+            }
           }
         );
+        resPromise = rp;
+        resInstance = ri;
       } else if (dataType === Enums.DATATYPE.Buffer) {
         const dataURL = task.data.slice(task.start, task.end + 1).toString('base64');
-
-        resPromise = client.uploadPartFromDataUrl(bucketName, objectName, uploadId, partNumber, partSize, dataURL, {
-          [H.CONTENT_LENGTH]: partSize
+        const [rp, ri] = client.uploadPartFromDataUrl(bucketName, objectName, uploadId, partNumber, partSize, dataURL, {
+          [H.CONTENT_LENGTH]: partSize,
+          config: {
+            requestInstance: true
+          }
         });
+        resPromise = rp;
+        resInstance = ri;
       } else if (dataType === Enums.DATATYPE.Blob) {
         const blob = task.data.slice(task.start, task.end + 1);
-
-        resPromise = client.uploadPartFromBlob(bucketName, objectName, uploadId, partNumber, partSize, blob, {
-          [H.CONTENT_LENGTH]: partSize
+        const [rp, ri] = client.uploadPartFromBlob(bucketName, objectName, uploadId, partNumber, partSize, blob, {
+          [H.CONTENT_LENGTH]: partSize,
+          config: {
+            requestInstance: true
+          }
         });
+        resPromise = rp;
+        resInstance = ri;
+      }
+
+      /** 追踪请求实例 */
+      if (resInstance && typeof resInstance.abort === 'function') {
+        context.__pendingRequests.add(resInstance);
       }
 
       return resPromise
         .then((response) => {
+          context.__pendingRequests.delete(resInstance);
           debug('[__uploadPart] success: [%d] [%s]', task.partNumber, response.http_headers.etag);
 
           // 分片结束时间
@@ -721,6 +771,7 @@ class SuperUpload {
           callback();
         })
         .catch((error) => {
+          context.__pendingRequests.delete(resInstance);
           // 任务取消就不执行运行中的分片任务了
           if (context.isCancelled()) {
             return;
@@ -761,6 +812,9 @@ class SuperUpload {
    * @param {number} params.totalBytes 文件总字节数
    */
   __emitProgress(params) {
+    if (this.state === Enums.STATE.PAUSED) {
+      return;
+    }
     const onProgess = this.onProgress;
     const normalizedParams = {
       speed: `${filesize(params.speed, {base: 2, standard: 'jedec'})}/s`,

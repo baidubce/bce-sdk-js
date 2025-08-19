@@ -1,5 +1,71 @@
 # CHANGELOG
 
+## 1.0.7 (latest)
+
+_published on 2025-06-23_
+
+- fix:
+  - `deleteObject` request args not passing `versionId`
+
+## 1.0.6
+
+_published on 2025-06-20_
+
+- feat:
+
+  - add `listObjectVersions`、`getBucketVersioning`、`putBucketVersioning`、`_headBucket` APIs
+  - support versioning related APIs: `getObject`、`getObjectMetadata`、`deleteObject`、`deleteMultipleObjects`、`copyObject`
+  - support `'x-bce-version-id'` header
+
+- fix:
+
+  - `putSuperObject` paused task without immediately canceling request;
+
+- chore:
+  - add `x-bce-debug-id` in error response body;
+
+## 1.0.5-beta.3
+
+_published on 2025-05-27_
+
+- fix:
+  - `putSuperObject` paused task without immediately canceling request;
+
+## 1.0.5-beta.2
+
+_published on 2025-05-27_
+
+- chore:
+  - add `x-bce-debug-id` in error response body;
+
+## 1.0.4
+
+_published on 2025-05-20_
+
+- fix:
+  - Fix the logic error of mandatory verification in the `x-bce-fetch-source` request header in the `fetchObject` API
+
+## 1.0.3
+
+_published on 2025-04-07_
+
+- feat:
+
+  - Add compliance retention related APIs
+  - initBucketObjectLock support headers
+  - support `proxy` configuration;
+
+- fix:
+
+  - Fix endpoint is mistakenly set by virtual host config
+  - Allow passing headers in the ObjectLock related APIs
+
+- chore
+  - BosClient support 'x-bce-tagging' header;
+  - Adjust the priority of the removeVersionPrefix parameter;
+  - update mimeType to support mjs files;
+  - custom gloal config endpoint mistakenly overwritten by bj endpoint;
+
 ## 1.0.3-beta.9
 
 _published on 2025-03-24_
