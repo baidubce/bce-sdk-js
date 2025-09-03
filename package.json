@@ -6,7 +6,7 @@
   "browser": {
     "fs": false,
     "net": "./src/browser/net.js",
-    "index.js": "./dist/baidubce-sdk.bundle.js"
+    "index.js": "./dist/baidubce-sdk.bundle.min.js"
   },
   "files": [
     "dist/",
