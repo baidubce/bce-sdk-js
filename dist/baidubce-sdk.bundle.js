@@ -58609,7 +58609,7 @@ exports.createContext = Script.createContext = function (context) {
 },{"indexof":168}],426:[function(require,module,exports){
 module.exports={
   "name": "@baiducloud/sdk",
-  "version": "1.0.8-beta.2",
+  "version": "1.0.8-beta.3",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "browser": {
@@ -59239,6 +59239,9 @@ BceBaseClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, 
     }
     return Q.reject(err);
   });
+};
+BceBaseClient.prototype.isAbortError = function (error) {
+  return error && (error.name === 'AbortError' || error.code === 'ABORT_ERR');
 };
 module.exports = BceBaseClient;
 
@@ -60643,6 +60646,17 @@ var IMAGE_DOMAIN = 'bceimg.com';
  *   versionId?: string,   // 对象版本ID，仅支持getObject、getObjectMetadata、deleteObject、copyObject请求传入
  *   [key: string]: any    // 额外的参数，包含请求头、Clinet配置信息等
  * }} OptionsType
+ */
+
+/**
+ * sendRequest的varArgs参数
+ *
+ * @typedef {{
+ *   bucketName?: string,   // 存储桶名称
+ *   key?: string,          // 对象名称（对象全路径）
+ *   versionId?: string,    // 对象版本ID
+ *   [key: string]: any     // 额外的参数，包含请求头、Clinet配置信息等
+ * }} SendReqArgs
  */
 
 /**
@@ -62472,6 +62486,43 @@ BosClient.prototype.selectObject = function (bucketName, objectName, body, optio
 };
 
 // --- E N D ---
+
+/**
+ * 请求方法
+ * @typedef {POST' | 'GET' | 'DELETE' | 'PUT' | 'HEAD'} HttpMethod 请求方法
+ */
+
+/**
+ * 请求配置
+ *
+ * @typedef {Object} RequestConfig
+ * @property {string} [region] 区域配置
+ * @property {string} [endpoint] 自定义请求域名
+ * @property {(bucketName: string) => string} [customGenerateUrl] 自定义请求域名函数
+ * @property {boolean} [removeVersionPrefix] 是否移除版本前缀
+ * @property {AbortSignal} [signal] AbortSignal 实例对象
+ */
+
+/**
+ * 请求参数
+ *
+ * @typedef {Object} RequestArgs
+ * @property {string} [bucketName] 存储桶名称
+ * @property {string} [key] 对象名称（全路径）
+ * @property {string} [body] 请求体，JSON字符串
+ * @property {Object} [params] URL请求参数
+ * @property {Object} [headers] 请求头
+ * @property {RequestConfig} [config] 请求配置
+ * @property {*} [outputStream] 输出流
+ */
+
+/**
+ * 请求出口函数
+ *
+ * @param {HttpMethod} httpMethod 请求方法
+ * @param {RequestArgs} varArgs 请求参数
+ * @param {String} [requestUrl] 自定义请求地址，目前仅用于BOS分享链接的域名传入
+ */
 BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
   debug('<sendRequest> httpMethod = %j', httpMethod);
   debug('<sendRequest> varArgs = %j', varArgs);
@@ -62536,11 +62587,17 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
 // };
 
 /**
+ * 全局 & 局部配置合并
  *
- * @param {string} httpMethod GET,POST,PUT,DELETE,HEAD
- * @param {string} resource The http request path.
- * @param {Object} args The request info.
- * @param {Object} config The http client configuration
+ * @typedef {BceConfig & RequestConfig} HTTPRequestConfig
+ */
+
+/**
+ *
+ * @param {HttpMethod} httpMethod 请求方法
+ * @param {string} resource 请求URL origin
+ * @param {RequestArgs} args 请求相关参数
+ * @param {HTTPRequestConfig} config 请求配置
  */
 BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, config) {
   var client = this;
@@ -65150,6 +65207,10 @@ var isBrowser = typeof window !== 'undefined' && typeof window.document !== 'und
 var isNodeJS = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
 
 /**
+ * @typedef {import('./bos_client.js').HTTPRequestConfig} HTTPRequestConfig
+ */
+
+/**
  * 签名计算函数
  *
  * @typedef {Function} SignatureFunction
@@ -65189,7 +65250,7 @@ var isNodeJS = typeof process !== 'undefined' && process.versions != null && pro
  * The HttpClient
  *
  * @constructor
- * @param {BceConfig} config The http client configuration.
+ * @param {HTTPRequestConfig} config The http client configuration.
  */
 function HttpClient(config) {
   EventEmitter.call(this);
@@ -65237,8 +65298,7 @@ HttpClient.prototype.updateConfigByPath = function (path, value) {
  *
  * @param {string} httpMethod GET,POST,PUT,DELETE,HEAD
  * @param {string} path The http request path.
- * @param {(string|Buffer|stream.Readable)=} body The request body. If `body` is a
- * stream, `Content-Length` must be set explicitly.
+ * @param {(string|Buffer|stream.Readable)=} body The request body. If `body` is a stream, `Content-Length` must be set explicitly.
  * @param {Object=} headers The http request headers.
  * @param {Object=} params The querystrings in url.
  * @param {SignatureFunction=} signFunction The `Authorization` signature function
@@ -65296,6 +65356,9 @@ HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, pa
   // An 'error' event is emitted if verification fails.
   // Verification happens at the connection level, before the HTTP request is sent.
   options.rejectUnauthorized = false;
+  if (this.config.signal) {
+    options.signal = this.config.signal;
+  }
 
   // 代理服务器配置，仅支持NodeJS环境配置
   if (isNodeJS && this.config.proxy && u.isObject(this.config.proxy)) {
@@ -65348,10 +65411,30 @@ function isPromise(obj) {
 HttpClient.prototype._isValidStatus = function (statusCode) {
   return statusCode >= 200 && statusCode < 300;
 };
+
+/**
+ * @typedef {import('url').UrlWithStringQuery} UrlWithStringQuery
+ */
+
+/**
+ * @param {UrlWithStringQuery} options
+ * @param {(string|Buffer|stream.Readable)=} body The request body.
+ * @param {stream.Writable} outputStream
+ * @returns
+ */
 HttpClient.prototype._doRequest = function (options, body, outputStream) {
   var deferred = Q.defer();
   var api = options.protocol === 'https:' ? https : http;
   var client = this;
+  var signal = options.signal;
+  var isAborted = false;
+  if (signal && signal.aborted) {
+    var abortError = new Error('Request aborted');
+    abortError.name = 'AbortError';
+    /** 和Node.js中的错误码对齐 */
+    abortError.code = 'ABORT_ERR';
+    return Q.reject(abortError);
+  }
   var req = client._req = api.request(options, function (res) {
     if (client._isValidStatus(res.statusCode) && outputStream && outputStream instanceof stream.Writable) {
       res.pipe(outputStream);
@@ -65379,6 +65462,45 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
   //     req.xhr.timeout = 60e3;
   // }
 
+  /** 监听abort事件 */
+  if (signal) {
+    var onAbort = function onAbort() {
+      if (isAborted) return;
+      isAborted = true;
+
+      /** 浏览器环境：xhr 对象 */
+      if (req.xhr) {
+        req.xhr.abort();
+      } else if (typeof req.destroy === 'function') {
+        /** Node.js 环境：ClientRequest 对象 */
+        req.destroy();
+      } else if (typeof req.abort === 'function') {
+        req.abort();
+      }
+      var abortError = new Error('Request aborted');
+      abortError.name = 'AbortError';
+      abortError.code = 'ABORT_ERR';
+      deferred.reject(abortError);
+    };
+
+    // 兼容不同的 signal 实现
+    if (signal.addEventListener) {
+      signal.addEventListener('abort', onAbort, {
+        once: true
+      });
+    } else if (signal.on) {
+      signal.once('abort', onAbort);
+    }
+
+    // 清理监听器
+    deferred.promise["finally"](function () {
+      if (signal.removeEventListener) {
+        signal.removeEventListener('abort', onAbort);
+      } else if (signal.off) {
+        signal.off('abort', onAbort);
+      }
+    });
+  }
   if (req.xhr && _typeof(req.xhr.upload) === 'object') {
     u.each(['progress', 'error', 'abort', 'timeout'], function (eventName) {
       req.xhr.upload.addEventListener(eventName, function (evt) {
@@ -65389,7 +65511,9 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
 
   /** 这里处理http/https请求抛出的错误 */
   req.on('error', function (error) {
-    deferred.reject(error);
+    if (!isAborted) {
+      deferred.reject(error);
+    }
   });
   try {
     client._sendRequest(req, body);
