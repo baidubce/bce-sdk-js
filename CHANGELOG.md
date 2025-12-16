@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 1.0.8-beta.3
+
+_published on 2025-12-16_
+
+- chore: support `AbortController`
+
+
 ## 1.0.8-beta.2
 
 _published on 2025-09-04_

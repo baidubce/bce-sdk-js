@@ -132,5 +132,9 @@ BceBaseClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, 
     });
 };
 
+BceBaseClient.prototype.isAbortError = function (error) {
+    return error && (error.name === 'AbortError' || error.code === 'ABORT_ERR');
+}
+
 module.exports = BceBaseClient;
 

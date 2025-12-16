@@ -40,6 +40,10 @@ const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'u
 const isNodeJS = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
 
 /**
+ * @typedef {import('./bos_client.js').HTTPRequestConfig} HTTPRequestConfig
+ */
+
+/**
  * 签名计算函数
  *
  * @typedef {Function} SignatureFunction
@@ -79,7 +83,7 @@ const isNodeJS = typeof process !== 'undefined' && process.versions != null && p
  * The HttpClient
  *
  * @constructor
- * @param {BceConfig} config The http client configuration.
+ * @param {HTTPRequestConfig} config The http client configuration.
  */
 function HttpClient(config) {
   EventEmitter.call(this);
@@ -130,8 +134,7 @@ HttpClient.prototype.updateConfigByPath = function (path, value) {
  *
  * @param {string} httpMethod GET,POST,PUT,DELETE,HEAD
  * @param {string} path The http request path.
- * @param {(string|Buffer|stream.Readable)=} body The request body. If `body` is a
- * stream, `Content-Length` must be set explicitly.
+ * @param {(string|Buffer|stream.Readable)=} body The request body. If `body` is a stream, `Content-Length` must be set explicitly.
  * @param {Object=} headers The http request headers.
  * @param {Object=} params The querystrings in url.
  * @param {SignatureFunction=} signFunction The `Authorization` signature function
@@ -198,6 +201,10 @@ HttpClient.prototype.sendRequest = function (httpMethod, path, body, headers, pa
   // Verification happens at the connection level, before the HTTP request is sent.
   options.rejectUnauthorized = false;
 
+  if (this.config.signal) {
+    options.signal = this.config.signal;
+  }
+
   // 代理服务器配置，仅支持NodeJS环境配置
   if (isNodeJS && this.config.proxy && u.isObject(this.config.proxy)) {
     const {host, port: port} = this.config.proxy;
@@ -262,10 +269,30 @@ HttpClient.prototype._isValidStatus = function (statusCode) {
   return statusCode >= 200 && statusCode < 300;
 };
 
+/**
+ * @typedef {import('url').UrlWithStringQuery} UrlWithStringQuery
+ */
+
+/**
+ * @param {UrlWithStringQuery} options
+ * @param {(string|Buffer|stream.Readable)=} body The request body.
+ * @param {stream.Writable} outputStream
+ * @returns
+ */
 HttpClient.prototype._doRequest = function (options, body, outputStream) {
   var deferred = Q.defer();
   var api = options.protocol === 'https:' ? https : http;
   var client = this;
+  var signal = options.signal;
+  var isAborted = false;
+
+  if (signal && signal.aborted) {
+    var abortError = new Error('Request aborted');
+    abortError.name = 'AbortError';
+    /** 和Node.js中的错误码对齐 */
+    abortError.code = 'ABORT_ERR';
+    return Q.reject(abortError);
+  }
 
   var req = (client._req = api.request(options, function (res) {
     if (client._isValidStatus(res.statusCode) && outputStream && outputStream instanceof stream.Writable) {
@@ -294,6 +321,45 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
   //     req.xhr.timeout = 60e3;
   // }
 
+  /** 监听abort事件 */
+  if (signal) {
+    var onAbort = function () {
+      if (isAborted) return;
+      isAborted = true;
+
+      /** 浏览器环境：xhr 对象 */
+      if (req.xhr) {
+        req.xhr.abort();
+      } else if (typeof req.destroy === 'function') {
+        /** Node.js 环境：ClientRequest 对象 */
+        req.destroy();
+      } else if (typeof req.abort === 'function') {
+        req.abort();
+      }
+
+      var abortError = new Error('Request aborted');
+      abortError.name = 'AbortError';
+      abortError.code = 'ABORT_ERR';
+      deferred.reject(abortError);
+    };
+
+    // 兼容不同的 signal 实现
+    if (signal.addEventListener) {
+      signal.addEventListener('abort', onAbort, {once: true});
+    } else if (signal.on) {
+      signal.once('abort', onAbort);
+    }
+
+    // 清理监听器
+    deferred.promise.finally(function () {
+      if (signal.removeEventListener) {
+        signal.removeEventListener('abort', onAbort);
+      } else if (signal.off) {
+        signal.off('abort', onAbort);
+      }
+    });
+  }
+
   if (req.xhr && typeof req.xhr.upload === 'object') {
     u.each(['progress', 'error', 'abort', 'timeout'], function (eventName) {
       req.xhr.upload.addEventListener(
@@ -308,7 +374,9 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
 
   /** 这里处理http/https请求抛出的错误 */
   req.on('error', function (error) {
-    deferred.reject(error);
+    if (!isAborted) {
+      deferred.reject(error);
+    }
   });
 
   try {

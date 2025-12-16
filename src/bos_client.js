@@ -92,6 +92,17 @@ var IMAGE_DOMAIN = 'bceimg.com';
  */
 
 /**
+ * sendRequest的varArgs参数
+ *
+ * @typedef {{
+ *   bucketName?: string,   // 存储桶名称
+ *   key?: string,          // 对象名称（对象全路径）
+ *   versionId?: string,    // 对象版本ID
+ *   [key: string]: any     // 额外的参数，包含请求头、Clinet配置信息等
+ * }} SendReqArgs
+ */
+
+/**
  * BOS service api
  *
  * @see http://gollum.baidu.com/BOS_API#BOS-API文档
@@ -2094,6 +2105,43 @@ BosClient.prototype.selectObject = function (bucketName, objectName, body, optio
 };
 
 // --- E N D ---
+
+/**
+ * 请求方法
+ * @typedef {POST' | 'GET' | 'DELETE' | 'PUT' | 'HEAD'} HttpMethod 请求方法
+ */
+
+/**
+ * 请求配置
+ *
+ * @typedef {Object} RequestConfig
+ * @property {string} [region] 区域配置
+ * @property {string} [endpoint] 自定义请求域名
+ * @property {(bucketName: string) => string} [customGenerateUrl] 自定义请求域名函数
+ * @property {boolean} [removeVersionPrefix] 是否移除版本前缀
+ * @property {AbortSignal} [signal] AbortSignal 实例对象
+ */
+
+/**
+ * 请求参数
+ *
+ * @typedef {Object} RequestArgs
+ * @property {string} [bucketName] 存储桶名称
+ * @property {string} [key] 对象名称（全路径）
+ * @property {string} [body] 请求体，JSON字符串
+ * @property {Object} [params] URL请求参数
+ * @property {Object} [headers] 请求头
+ * @property {RequestConfig} [config] 请求配置
+ * @property {*} [outputStream] 输出流
+ */
+
+/**
+ * 请求出口函数
+ *
+ * @param {HttpMethod} httpMethod 请求方法
+ * @param {RequestArgs} varArgs 请求参数
+ * @param {String} [requestUrl] 自定义请求地址，目前仅用于BOS分享链接的域名传入
+ */
 BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
   debug('<sendRequest> httpMethod = %j', httpMethod);
   debug('<sendRequest> varArgs = %j', varArgs);
@@ -2182,11 +2230,17 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
 // };
 
 /**
+ * 全局 & 局部配置合并
  *
- * @param {string} httpMethod GET,POST,PUT,DELETE,HEAD
- * @param {string} resource The http request path.
- * @param {Object} args The request info.
- * @param {Object} config The http client configuration
+ * @typedef {BceConfig & RequestConfig} HTTPRequestConfig
+ */
+
+/**
+ *
+ * @param {HttpMethod} httpMethod 请求方法
+ * @param {string} resource 请求URL origin
+ * @param {RequestArgs} args 请求相关参数
+ * @param {HTTPRequestConfig} config 请求配置
  */
 BosClient.prototype.sendHTTPRequest = function (httpMethod, resource, args, config) {
   var client = this;
