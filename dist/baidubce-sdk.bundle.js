@@ -58609,7 +58609,7 @@ exports.createContext = Script.createContext = function (context) {
 },{"indexof":168}],426:[function(require,module,exports){
 module.exports={
   "name": "@baiducloud/sdk",
-  "version": "1.0.8-beta.3",
+  "version": "1.0.8-beta.4",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "browser": {
@@ -60706,7 +60706,8 @@ BosClient.prototype.generatePresignedUrl = function (bucketName, key, timestamp,
     protocol: config.protocol,
     cname_enabled: config.cname_enabled,
     pathStyleEnable: pathStyleEnable,
-    customGenerateUrl: config.customGenerateUrl
+    customGenerateUrl: config.customGenerateUrl,
+    lccLocation: config.lccLocation
   });
   params = params || {};
   var resource = path.normalize(path.join(config.removeVersionPrefix ? '/' : '/v1', !pathStyleEnable ? '' : strings.normalize(bucketName || ''), strings.normalize(key || '', false))).replace(/\\/g, '/');
@@ -62498,9 +62499,10 @@ BosClient.prototype.selectObject = function (bucketName, objectName, body, optio
  * @typedef {Object} RequestConfig
  * @property {string} [region] 区域配置
  * @property {string} [endpoint] 自定义请求域名
- * @property {(bucketName: string) => string} [customGenerateUrl] 自定义请求域名函数
+ * @property {(bucketName: string, region: string, options: {lccLocation?: string}) => string} [customGenerateUrl] 自定义请求域名函数
  * @property {boolean} [removeVersionPrefix] 是否移除版本前缀
  * @property {AbortSignal} [signal] AbortSignal 实例对象
+ * @property {string} [lccLocation] LCC ID，当存储桶为LCC类型时需要传入
  */
 
 /**
@@ -62550,7 +62552,10 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
 
   // provide the method for generating url
   if (typeof customGenerateUrl === 'function') {
-    endpoint = customGenerateUrl(bucketName, region);
+    var options = {
+      lccLocation: varArgs.config ? varArgs.config.lccLocation : undefined
+    };
+    endpoint = customGenerateUrl(bucketName, region, options);
     var resource = requestUrl || path.normalize(path.join(versionPrefix, strings.normalize(varArgs.key || '', false))).replace(/\\/g, '/');
   } else {
     endpoint = domainUtils.handleEndpoint({
@@ -62559,7 +62564,8 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
       region: region,
       protocol: this.config.protocol,
       cname_enabled: this.config.cname_enabled,
-      pathStyleEnable: pathStyleEnable
+      pathStyleEnable: pathStyleEnable,
+      lccLocation: varArgs.config ? varArgs.config.lccLocation : undefined
     });
     var resource = requestUrl || path.normalize(path.join(versionPrefix ? '/' : '/v1',
     // if pathStyleEnable is true
@@ -65111,6 +65117,7 @@ var handleEndpoint = function handleEndpoint(_ref) {
     protocol = _ref.protocol,
     region = _ref.region,
     customGenerateUrl = _ref.customGenerateUrl,
+    lccLocation = _ref.lccLocation,
     _ref$cname_enabled = _ref.cname_enabled,
     cname_enabled = _ref$cname_enabled === void 0 ? false : _ref$cname_enabled,
     _ref$pathStyleEnable = _ref.pathStyleEnable,
@@ -65118,7 +65125,9 @@ var handleEndpoint = function handleEndpoint(_ref) {
   var resolvedEndpoint = endpoint;
   // 有自定义域名函数
   if (customGenerateUrl) {
-    return customGenerateUrl(bucketName, region);
+    return customGenerateUrl(bucketName, region, {
+      lccLocation: lccLocation
+    });
   }
 
   // 使用的是自定义域名 / virtual-host

@@ -260,13 +260,17 @@ const isVirtualHost = function (host) {
 };
 
 // 判断是否为ipv4
-const isIPv4 = function(input) {
-  return /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(input);
+const isIPv4 = function (input) {
+  return /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(
+    input
+  );
 };
 
 // 判断是否为ipv6
-const isIPv6 = function(input) {
-  return /^(([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))$/.test(input);
+const isIPv6 = function (input) {
+  return /^(([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))$/.test(
+    input
+  );
 };
 
 // 判断是否为ip host
@@ -340,55 +344,52 @@ const replaceEndpointByBucket = function (bucket, endpoint) {
  * compute base endpoint
  */
 const generateBaseEndpoint = function (protocol, region) {
-  return util.format('%s://%s.%s',
-    protocol,
-    region,
-    config.DEFAULT_BOS_DOMAIN);
-}
+  return util.format('%s://%s.%s', protocol, region, config.DEFAULT_BOS_DOMAIN);
+};
 
 /**
  * handle endpoint
  */
 const handleEndpoint = function ({
   bucketName,
-  endpoint, 
+  endpoint,
   protocol,
   region,
   customGenerateUrl,
-  cname_enabled=false,
-  pathStyleEnable=false,
+  lccLocation,
+  cname_enabled = false,
+  pathStyleEnable = false
 }) {
   var resolvedEndpoint = endpoint;
   // 有自定义域名函数
   if (customGenerateUrl) {
-    return customGenerateUrl(bucketName, region);
+    return customGenerateUrl(bucketName, region, {lccLocation: lccLocation});
   }
-  
+
   // 使用的是自定义域名 / virtual-host
   if (isCnameLikeHost(resolvedEndpoint) || cname_enabled) {
     // if virtual host endpoint and bucket is not empty, compatible bucket and endpoint
     if (needCompatibleBucketAndEndpoint(bucketName, resolvedEndpoint)) {
-        // bucket from api and from endpoint is different
-        resolvedEndpoint = replaceEndpointByBucket(bucketName, resolvedEndpoint);
+      // bucket from api and from endpoint is different
+      resolvedEndpoint = replaceEndpointByBucket(bucketName, resolvedEndpoint);
     }
-  }
-  else {
+  } else {
     // 非ip/bns，pathStyleEnable不为true，强制转为pathStyle
     // 否则保持原状
     if (!pathStyleEnable && !isIpHost(resolvedEndpoint)) {
-        // if this region is provided, generate base endpoint
-        if (region) {
-          resolvedEndpoint = generateBaseEndpoint(protocol, region);
-        }
-        // service级别的接口不需要转换
-        if (bucketName && isBosHost(resolvedEndpoint)) {
-          const {protocol, host} = getDomainWithoutProtocal(resolvedEndpoint);
-          resolvedEndpoint = protocol + '//' + bucketName + '.' + host;
-        }
+      // if this region is provided, generate base endpoint
+      if (region) {
+        resolvedEndpoint = generateBaseEndpoint(protocol, region);
+      }
+      // service级别的接口不需要转换
+      if (bucketName && isBosHost(resolvedEndpoint)) {
+        const {protocol, host} = getDomainWithoutProtocal(resolvedEndpoint);
+        resolvedEndpoint = protocol + '//' + bucketName + '.' + host;
+      }
     }
   }
   return resolvedEndpoint;
-}
+};
 
 exports.domainUtils = {
   getDomainWithoutProtocal,

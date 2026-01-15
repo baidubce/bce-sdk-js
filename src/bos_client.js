@@ -159,7 +159,8 @@ BosClient.prototype.generatePresignedUrl = function (
     protocol: config.protocol,
     cname_enabled: config.cname_enabled,
     pathStyleEnable,
-    customGenerateUrl: config.customGenerateUrl
+    customGenerateUrl: config.customGenerateUrl,
+    lccLocation: config.lccLocation
   });
 
   params = params || {};
@@ -2117,9 +2118,10 @@ BosClient.prototype.selectObject = function (bucketName, objectName, body, optio
  * @typedef {Object} RequestConfig
  * @property {string} [region] 区域配置
  * @property {string} [endpoint] 自定义请求域名
- * @property {(bucketName: string) => string} [customGenerateUrl] 自定义请求域名函数
+ * @property {(bucketName: string, region: string, options: {lccLocation?: string}) => string} [customGenerateUrl] 自定义请求域名函数
  * @property {boolean} [removeVersionPrefix] 是否移除版本前缀
  * @property {AbortSignal} [signal] AbortSignal 实例对象
+ * @property {string} [lccLocation] LCC ID，当存储桶为LCC类型时需要传入
  */
 
 /**
@@ -2180,7 +2182,8 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
 
   // provide the method for generating url
   if (typeof customGenerateUrl === 'function') {
-    endpoint = customGenerateUrl(bucketName, region);
+    const options = {lccLocation: varArgs.config ? varArgs.config.lccLocation : undefined};
+    endpoint = customGenerateUrl(bucketName, region, options);
     var resource =
       requestUrl ||
       path.normalize(path.join(versionPrefix, strings.normalize(varArgs.key || '', false))).replace(/\\/g, '/');
@@ -2191,7 +2194,8 @@ BosClient.prototype.sendRequest = function (httpMethod, varArgs, requestUrl) {
       region,
       protocol: this.config.protocol,
       cname_enabled: this.config.cname_enabled,
-      pathStyleEnable
+      pathStyleEnable,
+      lccLocation: varArgs.config ? varArgs.config.lccLocation : undefined
     });
 
     var resource =
