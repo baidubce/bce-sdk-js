@@ -350,14 +350,18 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
       signal.once('abort', onAbort);
     }
 
-    // 清理监听器
-    deferred.promise.finally(function () {
+    var cleanup = function () {
       if (signal.removeEventListener) {
         signal.removeEventListener('abort', onAbort);
       } else if (signal.off) {
         signal.off('abort', onAbort);
       }
-    });
+    };
+
+    // 清理Abort监听器
+    // then(onFulfilled, onRejected) 两个 handler 都只做 cleanup，
+    // 均隐式返回 undefined → 派生 Promise 始终 resolve，不会产生悬挂的 rejected promise
+    deferred.promise.then(cleanup, cleanup);
   }
 
   if (req.xhr && typeof req.xhr.upload === 'object') {
