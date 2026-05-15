@@ -58609,7 +58609,7 @@ exports.createContext = Script.createContext = function (context) {
 },{"indexof":168}],426:[function(require,module,exports){
 module.exports={
   "name": "@baiducloud/sdk",
-  "version": "1.0.8-beta.4",
+  "version": "1.0.8-beta.5",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "browser": {
@@ -65500,15 +65500,18 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
     } else if (signal.on) {
       signal.once('abort', onAbort);
     }
-
-    // 清理监听器
-    deferred.promise["finally"](function () {
+    var cleanup = function cleanup() {
       if (signal.removeEventListener) {
         signal.removeEventListener('abort', onAbort);
       } else if (signal.off) {
         signal.off('abort', onAbort);
       }
-    });
+    };
+
+    // 清理Abort监听器
+    // then(onFulfilled, onRejected) 两个 handler 都只做 cleanup，
+    // 均隐式返回 undefined → 派生 Promise 始终 resolve，不会产生悬挂的 rejected promise
+    deferred.promise.then(cleanup, cleanup);
   }
   if (req.xhr && _typeof(req.xhr.upload) === 'object') {
     u.each(['progress', 'error', 'abort', 'timeout'], function (eventName) {

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.0.8-beta.5
+
+_published on 2026-05-15_
+
+- chore: suppress request abort error
+
 ## 1.0.8-beta.4
 
 _published on 2026-01-15_
