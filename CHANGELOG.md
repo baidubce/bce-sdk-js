@@ -2,7 +2,7 @@
 
 ## 1.0.8-beta.6
 
-_unreleased_
+_published on 2026-05-22_
 
 - feat: introduce `httpObserver` hook on `BosClient` config. SDK now emits `start / firstByte / end / error / abort` events for every HTTP request, enabling host-side passive network quality monitoring with zero business-code intrusion. Falls back to a no-op fast-path when not configured.
 - feat: add `observerContext` config field, passed through to observer events as-is for caller-side correlation (e.g. `taskId`, `partNumber`, `region`, `lccLocation`).

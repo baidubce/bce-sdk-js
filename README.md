@@ -37,8 +37,10 @@ git add -u .
 git commit -m "bump: <version>"
 
 # 发布测试版本
+npm publish --tag beta
 npm publish --tag beta --registry=https://registry.npmjs.org
 # 发布正式版本
+npm publish
 npm publish --registry=https://registry.npmjs.org
 
 # 发布到CDN

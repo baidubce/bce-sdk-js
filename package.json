@@ -50,6 +50,10 @@
     "lurunze <lurunze@hotmail.com>"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
     "@types/node": "^16.0.0",

@@ -158,7 +158,7 @@
     },
     "BosClient.getBucketLifecycle": {
       "doc": "https://cloud.baidu.com/doc/BOS/s/skc4f3bs0",
-      "docContentHash": "5ee6c81e58deef51eb2abbac81b6cfa9815e4d78",
+      "docContentHash": "1a85b9a35a11629b32f472483decfb868e30b0dc",
       "docCheckedAt": "2026-05-22",
       "sdkAlignedAt": null,
       "notes": ""
