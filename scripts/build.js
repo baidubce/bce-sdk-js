@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2026 Baidu Inc. All Rights Reserved
+ *
+ * This source code is licensed under the MIT license.
+ * See LICENSE file in the project root for license information.
+ * 
+ * @script "rm -rf dist/ && mkdir dist && browserify index.js -s baidubce.sdk -o dist/baidubce-sdk.bundle.js && uglifyjs dist/baidubce-sdk.bundle.js --compress --mangle -o dist/baidubce-sdk.bundle.min.js",
+ */
 const path = require('path');
 const fs = require('fs');
 

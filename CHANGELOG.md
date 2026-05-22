@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.0.8-beta.6
+
+_unreleased_
+
+- feat: introduce `httpObserver` hook on `BosClient` config. SDK now emits `start / firstByte / end / error / abort` events for every HTTP request, enabling host-side passive network quality monitoring with zero business-code intrusion. Falls back to a no-op fast-path when not configured.
+- feat: add `observerContext` config field, passed through to observer events as-is for caller-side correlation (e.g. `taskId`, `partNumber`, `region`, `lccLocation`).
+- types: merge type declarations with the calibrated `bos-client-1.5.0-x/types/@baiducloud/sdk.d.ts`. All conflicting fields now follow the bos-client version. Added comprehensive types for `BosClient` (multipart upload, copy, ACL, replication, etc.), `STS`, `HttpClient`, BOS enums (`BOSStorageClassType`, `BOSCannedACLType`, `BucketPermission`, `ObjectPermission`, `BucketVersionState`, `BOSHeaders`, etc.).
+- chore: deprecate `requestInstance: true` (returning `[Promise<BosResponse>, ClientRequest]`). Use `AbortSignal` for cancellation and `httpObserver` for observation instead. The field will be removed in a future major release.
+
 ## 1.0.8-beta.5
 
 _published on 2026-05-15_

@@ -1,8 +1,9 @@
 {
   "name": "@baiducloud/sdk",
-  "version": "1.0.8-beta.5",
+  "version": "1.0.8-beta.6",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
+  "types": "./types/index.d.ts",
   "browser": {
     "fs": false,
     "net": "./src/browser/net.js",
@@ -14,6 +15,7 @@
     "types/",
     "index.js",
     "package.json",
+    "LICENSE",
     "CHANGELOG.md",
     "README.md"
   ],
@@ -22,8 +24,17 @@
   },
   "scripts": {
     "build": "node scripts/build.js",
-    "pack": "rm -rf dist/ && mkdir dist && browserify index.js -s baidubce.sdk -o dist/baidubce-sdk.bundle.js && uglifyjs dist/baidubce-sdk.bundle.js --compress --mangle -o dist/baidubce-sdk.bundle.min.js",
+    "prebuild": "node scripts/check-bos-types.js --strict && node scripts/check-bos-api-docs.js --check && npm run types:tsc",
     "docs": "cd example && npm run start",
+    "docs:check": "node scripts/check-bos-api-docs.js --check",
+    "docs:scan": "node scripts/check-bos-api-docs.js --scan-only",
+    "docs:sync": "node scripts/check-bos-api-docs.js --sync",
+    "docs:update": "node scripts/check-bos-api-docs.js",
+    "types:check": "node scripts/check-bos-types.js --check",
+    "types:scan": "node scripts/check-bos-types.js --scan",
+    "types:strict": "node scripts/check-bos-types.js --strict",
+    "types:sync": "node scripts/check-bos-types.js --sync",
+    "types:tsc": "tsc -p tsconfig.check.json",
     "publish:bos": "node scripts/publish_to_bos.js",
     "test": "jest",
     "test:legacy": "./test/run-all.sh"
@@ -41,6 +52,7 @@
   "license": "MIT",
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
+    "@types/node": "^16.0.0",
     "async": "^3.2.5",
     "dayjs": "^1.11.10",
     "debug": "^3.1.0",

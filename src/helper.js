@@ -1,14 +1,8 @@
 /**
- * Copyright (c) 2014 Baidu.com, Inc. All Rights Reserved
+ * Copyright (c) 2026 Baidu Inc. All Rights Reserved
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
+ * This source code is licensed under the MIT license.
+ * See LICENSE file in the project root for license information.
  *
  * @file src/helper.js
  * @author leeight
@@ -24,6 +18,11 @@ var strings = require('./strings');
 var url = require('url');
 var util = require('util');
 var config = require('./config');
+var H = require('./headers');
+
+// x-bce-traffic-limit 合法范围（bit/s），约 100KB/s ~ 100MB/s
+var TRAFFIC_LIMIT_MIN = 819200;
+var TRAFFIC_LIMIT_MAX = 838860800;
 
 // 超过这个限制就开始分片上传
 var MIN_MULTIPART_SIZE = 5 * 1024 * 1024; // 5M
@@ -41,6 +40,32 @@ var DEFAULT_CNAME_LIKE_LIST = ['.cdn.bcebos.com'];
 
 exports.omitNull = function (value, key, object) {
   return value != null;
+};
+
+/**
+ * 校验并把 x-bce-traffic-limit 写入 headers。
+ * - 接受 number 或可被 Number() 转为有限数的字符串；
+ * - null / undefined 视为未设置，跳过；
+ * - 超出 [TRAFFIC_LIMIT_MIN, TRAFFIC_LIMIT_MAX] 抛 TypeError。
+ *
+ * @param {Object} options 请求 options
+ * @param {Object} headers 目标 headers，会被原地修改
+ */
+exports.applyTrafficLimit = function (options, headers) {
+  if (!options) {
+    return;
+  }
+  var raw = options[H.X_BCE_TRAFFIC_LIMIT];
+  if (raw == null) {
+    return;
+  }
+  var limit = Number(raw);
+  if (!Number.isFinite(limit) || limit < TRAFFIC_LIMIT_MIN || limit > TRAFFIC_LIMIT_MAX) {
+    throw new TypeError(
+      'x-bce-traffic-limit range should be ' + TRAFFIC_LIMIT_MIN + '~' + TRAFFIC_LIMIT_MAX
+    );
+  }
+  headers[H.X_BCE_TRAFFIC_LIMIT] = limit;
 };
 
 /**
@@ -349,6 +374,16 @@ const generateBaseEndpoint = function (protocol, region) {
 
 /**
  * handle endpoint
+ *
+ * @param {Object} args
+ * @param {string} [args.bucketName]
+ * @param {string} [args.endpoint]
+ * @param {string} [args.protocol]
+ * @param {string} [args.region]
+ * @param {Function} [args.customGenerateUrl]
+ * @param {string} [args.lccLocation]
+ * @param {boolean} [args.cname_enabled=false]
+ * @param {boolean} [args.pathStyleEnable=false]
  */
 const handleEndpoint = function ({
   bucketName,

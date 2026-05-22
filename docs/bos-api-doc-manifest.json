@@ -1,0 +1,468 @@
+{
+  "$schema": "./bos-api-doc-manifest.schema.json",
+  "description": "BosClient API 与百度云官方文档的映射表。用于检测官方文档变更、追踪 SDK 与文档的对齐状态。",
+  "fields": {
+    "doc": "官方文档 URL",
+    "docContentHash": "文档正文的 sha1（脚本自动写入），变化即视为文档已更新",
+    "docCheckedAt": "上一次抓取并校验文档的日期（YYYY-MM-DD）",
+    "sdkAlignedAt": "SDK 类型/JSDoc 与文档完成对齐的日期（人工维护）",
+    "notes": "备注，例如未对齐字段、SDK 扩展字段、跳过原因等"
+  },
+  "apis": {
+    "BosClient._headBucket": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Mkc4eqkiz",
+      "docContentHash": "39fee229a15dc5e871b0e00975893a02012abc96",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.abortMultipartUpload": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Wkc5w2ndt",
+      "docContentHash": "2033fcafbd29d112d01e8feab72587379dd484cf",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.appendObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Mkc5pf1cs",
+      "docContentHash": "d3e4fb4995ee1ce6f761bb72b5c0609dd22acf51",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.completeBucketObjectLock": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/xkc4lsd70",
+      "docContentHash": "ada10eca935d181cea786e4b1fe469e1dbcdc746",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.completeMultipartUpload": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Nkc5vzayc",
+      "docContentHash": "2181356474a904c0be9d1897b95edc435b9b4cc1",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.copyObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Lkc5p9g3w",
+      "docContentHash": "9f5ca7b13cd53c75982edee64101a540d16f0ca7",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.deleteBucket": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Rkc4esgxu",
+      "docContentHash": "3b73c6aeea0a6ed728a2b32149e4031b68ec2a96",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.deleteBucketEncryption": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/ukc4fdis4",
+      "docContentHash": "53d793cb251c1c46d0b39bdd911e98c28710e12a",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.deleteBucketLifecycle": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/mkc4f5k1x",
+      "docContentHash": "00347bae8134be757fa4c4891b589108717230c7",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.deleteBucketLogging": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/qkc4f1p2v",
+      "docContentHash": "c0cf0f339f5047ff7a3c15f7de83d33af910366c",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.deleteBucketObjectLock": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/rkc4lrfw8",
+      "docContentHash": "6a7e40b102415edec1a36eb09ec040786ec590c9",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.deleteBucketReplication": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/dkc4exqvg",
+      "docContentHash": "eb8ad3477789d1aa5c7f99dea54f30e5f6b28b53",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.deleteBucketStaticWebsite": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/9kc4ftbgn",
+      "docContentHash": "91c53e8fcc5a09136064393af66f85c7beb320bf",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.deleteMultipleObjects": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Skc5tu1eg",
+      "docContentHash": "d3e4fb4995ee1ce6f761bb72b5c0609dd22acf51",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.deleteObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/bkc5tsslq",
+      "docContentHash": "9076aeab7df53e79f83c3121d3adfc9320efdb16",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.deleteObjectAcl": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Fkc5uqhqu",
+      "docContentHash": "e682f0305ba986a9ec4f7618aad512bb356cef9b",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.deleteUserQuota": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/gkc5nqxyw",
+      "docContentHash": "092f214d8e0bd136dd047ecf48b3e3c59dc2b2d0",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.extendBucketObjectLock": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/okc4ltaed",
+      "docContentHash": "1b2b4a9e29abcba7631cd70042980613451d5a5d",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.fetchObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Fkc5tf39q",
+      "docContentHash": "c4f28c8b1ba069acbaa915270c4a415832c3d6be",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.getBucketAcl": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/2kc4euaor",
+      "docContentHash": "2b87c2bc458755b86045499a797bbad8d668d117",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.getBucketEncryption": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Zkc4fa6x5",
+      "docContentHash": "ee51684bb71de735fa53c8be9e7d8366edc7f322",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getBucketLifecycle": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/skc4f3bs0",
+      "docContentHash": "5ee6c81e58deef51eb2abbac81b6cfa9815e4d78",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getBucketLocation": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Wkc49bfga",
+      "docContentHash": "92cc61b945b834443468da24da24667baa7f6427",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.getBucketLogging": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/ukc4f0uif",
+      "docContentHash": "f2923534589a89e0590883a42683c7693662e0b1",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getBucketObjectLock": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/bkc4lq5mq",
+      "docContentHash": "7478cb65c8d2db1be1584f236020ca1e45c3d425",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getBucketReplication": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/7kc4ewr1u",
+      "docContentHash": "b461dc4eed32022c24516a8cd3b15d1d12c08c74",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getBucketReplicationProgress": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/ekc4eyua6",
+      "docContentHash": "7b0b17c065e643e5a4ef7acd417b844ca18a2cc7",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getBucketStaticWebsite": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Xkc4fmkit",
+      "docContentHash": "a07b36594c13e9a554c21961b4efbbc5590de306",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getBucketStorageclass": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Ukc4f8p3b",
+      "docContentHash": "2b67082f2aa11239f7b387d16ade3c0c18b86809",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.getBucketVersioning": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/zlxucuoxg",
+      "docContentHash": "cb9b31680e5f552252d064504aaf8cceb3bf69e6",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/xkc5pcmcj",
+      "docContentHash": "47f75c1c27b3b7c369230adc768171ed5f7ec97c",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.getObjectAcl": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/ekc5ua7o6",
+      "docContentHash": "5d48b5bb0fb7686e0aa052cfe5634ab4217b7050",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.getObjectMetadata": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Tkc5pdo6c",
+      "docContentHash": "d3e4fb4995ee1ce6f761bb72b5c0609dd22acf51",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.getSymlink": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/okd8m23n4",
+      "docContentHash": "b64794e2c54e8c5908102debb6d9aef7100c9b9a",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.getUserQuota": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/8kc5nid9c",
+      "docContentHash": "7ede083149fbf8bbc3c821a76b534ec53de61f3a",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.initBucketObjectLock": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Xkc4jkho7",
+      "docContentHash": "48d39978144a5f1411d49a13709a2cc69247f09c",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.initiateMultipartUpload": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Nkc5uy7ox",
+      "docContentHash": "86e417eb7d0288f6fc600ab939fcf89fd8ec9715",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.listBucketReplication": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Vkcoek9t5",
+      "docContentHash": "a93e31812cefa19daa5afbc2adf936ff90e1ede4",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.listBuckets": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/bkcacfjvi",
+      "docContentHash": "43dadd48614939301825ebd10e16414ca7b06d49",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-19",
+      "notes": "OpenAPIBucketItem.lccLocation 为 SDK 扩展字段（非官方文档定义）"
+    },
+    "BosClient.listMultipartUploads": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Ikc5w7snc",
+      "docContentHash": "1654bcad89ef43aa068d435fabe5912a66340604",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.listObjects": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Ekc4epj6m",
+      "docContentHash": "5288f51399e39249405368ca5feab27b662bdb6b",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.listObjectVersions": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Klxudlm8i",
+      "docContentHash": "e306c15ec850a98530afde9390d0666f5321ec3a",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.listParts": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Xkc5w5jmm",
+      "docContentHash": "d832df41093478b156728f6a1b43a1a15bc98acd",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.optionsObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Xl098qh8g",
+      "docContentHash": "6a31a83afd5ab680a56a58add54dbbc1e57910d3",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.postObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/akc5orrn5",
+      "docContentHash": "1f984f06c8de7de01036cc85ce657278970341ce",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.putBucket": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/xkc4eo6i9",
+      "docContentHash": "86bded4d274bcf01533bcf39e132d32f559a45b2",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.putBucketAcl": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/pkc4etf4p",
+      "docContentHash": "60692690505468434dcf107386c18efcf955ce6d",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.putBucketEncryption": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/9kc4f9eqx",
+      "docContentHash": "088e92599692d0a3032c53fbb9ca8103a2f60987",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.putBucketLifecycle": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Vkc4f2c1y",
+      "docContentHash": "06b22ca2b1dc30180d8cd76814d9b640338982dd",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.putBucketLogging": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Wkc4ezpiy",
+      "docContentHash": "b953c45ce0ade23be4a07656f87889227ef80d10",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.putBucketReplication": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/fkc4evoy4",
+      "docContentHash": "9b229c2ac81b2016b1f2361f1dacf56b3e13e75f",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.putBucketStaticWebsite": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/jkc4fl181",
+      "docContentHash": "622bd32fc5bf4959e5c5c6d635b852e5fd784135",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.putBucketStorageclass": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Nkc4f6eye",
+      "docContentHash": "6de9ff22e4c52df055bba7f6450d3f1ee39e4964",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.putBucketVersioning": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/flxucacoe",
+      "docContentHash": "a9b66a70b271d7b09bf99eb30d7a7abb78f36d17",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.putObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Ikc5nv3wc",
+      "docContentHash": "da7d3e80a6ff5d68c80d105b97c9c2d0f4177c2c",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.putObjectAcl": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/skc5ue27j",
+      "docContentHash": "092cbe9a83e1adb1178bf937227ce47b95032ddc",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.putObjectCannedAcl": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/skc5ue27j",
+      "docContentHash": "092cbe9a83e1adb1178bf937227ce47b95032ddc",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.putSymlink": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Vkd8m19ts",
+      "docContentHash": "86f68e0f8e8dffe1ce3d4c251b8a542c8db7943d",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.putUserQuota": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/zkc5ne644",
+      "docContentHash": "3b5b307244356bcf9fed32bbce38686a5c9c167c",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-21",
+      "notes": ""
+    },
+    "BosClient.restoreObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/akc5t3f12",
+      "docContentHash": "6ec54ae82a58fa4fb2be3307f98fa10115560cbc",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.selectObject": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/Xkc5t84nz",
+      "docContentHash": "1eca16e847d2bc9e783badd476780bc3bf29cc20",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": null,
+      "notes": ""
+    },
+    "BosClient.setBucketAcl": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/pkc4etf4p",
+      "docContentHash": "60692690505468434dcf107386c18efcf955ce6d",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.setBucketCannedAcl": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/pkc4etf4p",
+      "docContentHash": "60692690505468434dcf107386c18efcf955ce6d",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.uploadPart": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/3kc5v4qs0",
+      "docContentHash": "59dfe51fe9316b62e7304677afae887fa3ca22b6",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    },
+    "BosClient.uploadPartCopy": {
+      "doc": "https://cloud.baidu.com/doc/BOS/s/fkc5vbii0",
+      "docContentHash": "c5a1fa5c2a349773284cb75b57ad8540e643804d",
+      "docCheckedAt": "2026-05-22",
+      "sdkAlignedAt": "2026-05-22",
+      "notes": ""
+    }
+  }
+}

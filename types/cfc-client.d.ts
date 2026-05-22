@@ -1,11 +1,19 @@
-declare namespace BaiduBce.SDK {
-    type CfcEndpoint = 'https://cfc.bj.baidubce.com' | 'https://cfc.gz.baidubce.com' | 'https://cfc.su.baidubce.com'
+/**
+ * Copyright (c) 2026 Baidu Inc. All Rights Reserved
+ *
+ * This source code is licensed under the MIT license.
+ * See LICENSE file in the project root for license information.
+ *
+ * @file cfc-client.d.ts
+ * @description CFC服务声明文件
+ */
 
+declare namespace BaiduBCE {
     type CfcResponse<TBody = any, THeader = {}> = PromiseResult<
-        TBody, THeader & HttpResponseHeaders
+        TBody, THeader & OpenAPIHeaders
     >
 
-    type Function = {
+    type CFCFunctionItem = {
         Uid: string,
         Description: string,
         FunctionBrn: string,
@@ -88,7 +96,7 @@ declare namespace BaiduBce.SDK {
     type CreateFunctionBody = { Code: FunctionCodeBody } & CreateFunctionConfiguration
 
     /** 百度智能云 `CFC` 服务客户端 */
-    class CfcClient {
+    class CfcClient extends BceBaseClient {
         constructor(options: { endpoint: string } & Credentials);
 
         /**
@@ -97,7 +105,7 @@ declare namespace BaiduBce.SDK {
          * [更多文档](https://cloud.baidu.com/doc/CFC/s/Zjwvz46l3)
          */
         listFunctions(opt_options?: { Marker?: number, MaxItems?: number }): CfcResponse<{
-            Functions: Array<Function>
+            Functions: Array<CFCFunctionItem>
         }>;
 
         /**
@@ -105,7 +113,7 @@ declare namespace BaiduBce.SDK {
          *
          * [更多文档](https://cloud.baidu.com/doc/CFC/s/xjwvz450q)
          */
-        createFunction(body: CreateFunctionBody): CfcResponse<Function>;
+        createFunction(body: CreateFunctionBody): CfcResponse<CFCFunctionItem>;
 
         /**
          * `函数操作接口`: 获取某个函数的代码地址和详细配置。
@@ -114,7 +122,7 @@ declare namespace BaiduBce.SDK {
          */
         getFunction(functionName: string, opt_options?: { Qualifier: string }): CfcResponse<{
             Code: { Location: string, RepositoryType: string },
-            Configuration: Function,
+            Configuration: CFCFunctionItem,
         }>;
 
         /**
@@ -157,7 +165,7 @@ declare namespace BaiduBce.SDK {
          *
          * [更多文档](https://cloud.baidu.com/doc/CFC/s/Gjwvz4dyc)
          */
-        listVersionsByFunction(functionName: string, opt_options?: { Marker?: number, MaxItems?: number }): CfcResponse<{ Versions: Array<Function> }>;
+        listVersionsByFunction(functionName: string, opt_options?: { Marker?: number, MaxItems?: number }): CfcResponse<{ Versions: Array<CFCFunctionItem> }>;
 
         /**
          * `函数操作接口`: 为函数发布版本。

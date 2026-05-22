@@ -1,14 +1,8 @@
 /**
- * Copyright (c) 2014 Baidu.com, Inc. All Rights Reserved
+ * Copyright (c) 2026 Baidu Inc. All Rights Reserved
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
+ * This source code is licensed under the MIT license.
+ * See LICENSE file in the project root for license information.
  *
  * @file src/auth.js
  * @author leeight
@@ -38,8 +32,10 @@ function Auth(ak, sk) {
 }
 
 /**
- * Generate the signature based on http://gollum.baidu.com/AuthenticationMechanism
+ * Generate the v1 authorization for BCE signature.
  *
+ * @doc https://cloud.baidu.com/doc/Reference/s/njwvz1yfu
+ * 
  * @param {string} method The http request method, such as GET, POST, DELETE, PUT, ...
  * @param {string} resource The request path.
  * @param {Object=} params The query strings.
@@ -93,7 +89,8 @@ Auth.prototype.uriCanonicalization = function (uri) {
 /**
  * Canonical the query strings.
  *
- * @see http://gollum.baidu.com/AuthenticationMechanism#生成CanonicalQueryString
+ * @doc https://cloud.baidu.com/doc/Reference/s/njwvz1yfu#3-canonicalquerystring
+ *
  * @param {Object} params The query strings.
  * @return {string}
  */
@@ -116,7 +113,8 @@ Auth.prototype.queryStringCanonicalization = function (params) {
 /**
  * Canonical the http request headers.
  *
- * @see http://gollum.baidu.com/AuthenticationMechanism#生成CanonicalHeaders
+ * @doc https://cloud.baidu.com/doc/Reference/s/njwvz1yfu#4-canonicalheaders
+ *
  * @param {Object} headers The http request headers.
  * @param {Array.<string>=} headersToSign The request headers list which will be used to calcualate the signature.
  * @return {*} canonicalHeaders and signedHeaders

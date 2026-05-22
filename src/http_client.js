@@ -1,14 +1,8 @@
 /**
- * Copyright (c) 2014 Baidu.com, Inc. All Rights Reserved
+ * Copyright (c) 2026 Baidu Inc. All Rights Reserved
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
+ * This source code is licensed under the MIT license.
+ * See LICENSE file in the project root for license information.
  *
  * @file src/http_client.js
  * @author leeight
@@ -40,43 +34,14 @@ const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'u
 const isNodeJS = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
 
 /**
- * @typedef {import('./bos_client.js').HTTPRequestConfig} HTTPRequestConfig
- */
-
-/**
- * 签名计算函数
+ * 类型定义统一来自 `types/` 下的 d.ts，作为单一数据源。
+ * 这里仅以 JSDoc `import()` 别名形式引入，便于 JS 内部继续按现有名字使用，
+ * 任何字段调整都只需修改 d.ts。
  *
- * @typedef {Function} SignatureFunction
- * @property {Object} credentials - 鉴权信息
- * @property {string} credentials.ak - 百度云账户体系 `Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
- * @property {string} credentials.sk -  百度云账户体系 `Secret Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
- * @property {string} httpMethod - http方法, GET,POST,PUT,DELETE,HEAD
- * @property {string} path - http request path
- * @property {Object} params - The querystrings in url.
- * @property {Object} headers - The http request headers.
- * @property {HttpClient} context - 上下文
- * @property {string} returns - 计算好的authorization签名
- */
-
-/**
- * 代理配置
- *
- * @typedef {Object} ProxyConfig
- * @property {string} host - 代理服务器地址
- * @property {string} port - 代理服务器端口号
- */
-
-/**
- * @typedef {Object} BceConfig
- * @property {string} endpoint - 服务Endpoinit, default: http(s)://<Service>.<Region>.baidubce.com
- * @property {string} [region=bj] - 区域, default: bj
- * @property {Object} credentials - 鉴权信息
- * @property {string} credentials.ak - 百度云账户体系 `Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
- * @property {string} credentials.sk -  百度云账户体系 `Secret Access Key` [参考文档](https://cloud.baidu.com/doc/Reference/s/9jwvz2egb)
- * @property {string=} sessionToken - 使用临时鉴权信息时，需要传入 `sessionToken`
- * @property {string=} protocol - 协议
- * @property {SignatureFunction=} createSignature - 签名函数，使用临时鉴权时，需要传入 `createSignature` 函数更新签名
- * @property {ProxyConfig=} proxy - 代理配置
+ * @typedef {import('../types').BceClientOptions} BceClientOptions
+ * @typedef {import('../types').ProxyConfig} ProxyConfig
+ * @typedef {import('../types').SignatureFunction} SignatureFunction
+ * @typedef {import('../types').BceClientOptions & import('../types').RequestConfig} HTTPRequestConfig
  */
 
 /**
@@ -99,7 +64,7 @@ function HttpClient(config) {
 util.inherits(HttpClient, EventEmitter);
 
 /**
- * 基于对象路径更新BceConfig中的参数值，注意不要破坏源对象的引用
+ * 基于对象路径更新BceClientOptions中的参数值，注意不要破坏源对象的引用
  *
  * @param {string} path - key路径
  * @param {string} value - 更新后的值
@@ -286,26 +251,139 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
   var signal = options.signal;
   var isAborted = false;
 
+  // ===== HttpObserver 埋点初始化（fast-path: 未配置则零开销） =====
+  var observer =
+    client.config && typeof client.config.httpObserver === 'function' ? client.config.httpObserver : null;
+  var observerContext = client.config && client.config.observerContext ? client.config.observerContext : undefined;
+  var requestId = observer ? client._generateRequestId() : null;
+  var startedAt = observer ? Date.now() : 0;
+  var firstByteAt = 0;
+  var bytesSent = 0;
+  var bytesReceived = 0;
+  var endEmitted = false;
+
+  /**
+   * 安全触发观测事件，不允许观察者异常影响主流程
+   * @param {string} phase - start | firstByte | end | error | abort
+   * @param {Object=} extra - 附加字段（statusCode、ttfbMs、durationMs 等）
+   */
+  function safeEmit(phase, extra) {
+    if (!observer) return;
+    try {
+      var payload = {
+        requestId: requestId,
+        phase: phase,
+        method: options.method,
+        host: options.host || options.hostname,
+        path: options.path,
+        startedAt: startedAt
+      };
+      if (observerContext) {
+        payload.context = observerContext;
+      }
+      if (extra) {
+        for (var k in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, k) && extra[k] !== undefined) {
+            payload[k] = extra[k];
+          }
+        }
+      }
+      observer(payload);
+    } catch (e) {
+      debug('httpObserver threw error: %s', e && e.message);
+    }
+  }
+
   if (signal && signal.aborted) {
     var abortError = new Error('Request aborted');
     abortError.name = 'AbortError';
     /** 和Node.js中的错误码对齐 */
     abortError.code = 'ABORT_ERR';
+    if (observer) {
+      safeEmit('abort', {durationMs: 0, errorCode: 'ABORT_ERR'});
+    }
     return Q.reject(abortError);
   }
 
+  // start 事件：请求已组装完成、即将发起
+  safeEmit('start');
+
   var req = (client._req = api.request(options, function (res) {
+    // firstByte 事件：响应头到达
+    if (observer && !firstByteAt) {
+      firstByteAt = Date.now();
+      safeEmit('firstByte', {ttfbMs: firstByteAt - startedAt, statusCode: res.statusCode});
+
+      // 累积响应体字节数（不影响 _recvResponse 的 data 监听）
+      res.on('data', function (chunk) {
+        if (chunk && typeof chunk.length === 'number') {
+          bytesReceived += chunk.length;
+        }
+      });
+    }
+
     if (client._isValidStatus(res.statusCode) && outputStream && outputStream instanceof stream.Writable) {
       res.pipe(outputStream);
       outputStream.on('finish', function () {
+        if (observer && !endEmitted) {
+          endEmitted = true;
+          safeEmit('end', {
+            statusCode: res.statusCode,
+            ttfbMs: firstByteAt ? firstByteAt - startedAt : undefined,
+            durationMs: Date.now() - startedAt,
+            bytesSent: bytesSent,
+            bytesReceived: bytesReceived
+          });
+        }
         deferred.resolve(success(client._fixHeaders(res.headers), {}));
       });
       outputStream.on('error', function (error) {
+        if (observer && !endEmitted) {
+          endEmitted = true;
+          safeEmit('error', {
+            statusCode: res.statusCode,
+            durationMs: Date.now() - startedAt,
+            bytesSent: bytesSent,
+            bytesReceived: bytesReceived,
+            errorCode: (error && (error.code || error.name)) || 'STREAM_ERROR'
+          });
+        }
         deferred.reject(error);
       });
       return;
     }
-    deferred.resolve(client._recvResponse(res));
+
+    var recvPromise = client._recvResponse(res);
+    if (observer) {
+      recvPromise.then(
+        function () {
+          if (!endEmitted) {
+            endEmitted = true;
+            safeEmit('end', {
+              statusCode: res.statusCode,
+              ttfbMs: firstByteAt ? firstByteAt - startedAt : undefined,
+              durationMs: Date.now() - startedAt,
+              bytesSent: bytesSent,
+              bytesReceived: bytesReceived
+            });
+          }
+        },
+        function (err) {
+          if (!endEmitted) {
+            endEmitted = true;
+            safeEmit('error', {
+              statusCode: (err && err[H.X_STATUS_CODE]) || res.statusCode,
+              ttfbMs: firstByteAt ? firstByteAt - startedAt : undefined,
+              durationMs: Date.now() - startedAt,
+              bytesSent: bytesSent,
+              bytesReceived: bytesReceived,
+              errorCode: (err && (err[H.X_CODE] || err.code || err.name)) || 'HTTP_ERROR'
+            });
+          }
+        }
+      );
+    }
+    deferred.resolve(recvPromise);
   }));
 
   // 设置超时10s
@@ -340,6 +418,16 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
       var abortError = new Error('Request aborted');
       abortError.name = 'AbortError';
       abortError.code = 'ABORT_ERR';
+      if (observer && !endEmitted) {
+        endEmitted = true;
+        safeEmit('abort', {
+          ttfbMs: firstByteAt ? firstByteAt - startedAt : undefined,
+          durationMs: Date.now() - startedAt,
+          bytesSent: bytesSent,
+          bytesReceived: bytesReceived,
+          errorCode: 'ABORT_ERR'
+        });
+      }
       deferred.reject(abortError);
     };
 
@@ -379,13 +467,47 @@ HttpClient.prototype._doRequest = function (options, body, outputStream) {
   /** 这里处理http/https请求抛出的错误 */
   req.on('error', function (error) {
     if (!isAborted) {
+      if (observer && !endEmitted) {
+        endEmitted = true;
+        safeEmit('error', {
+          ttfbMs: firstByteAt ? firstByteAt - startedAt : undefined,
+          durationMs: Date.now() - startedAt,
+          bytesSent: bytesSent,
+          bytesReceived: bytesReceived,
+          errorCode: (error && (error.code || error.name)) || 'NETWORK_ERROR'
+        });
+      }
       deferred.reject(error);
     }
   });
 
+  // 包装 req.write 以累计上行字节数（仅当 observer 启用时）
+  if (observer && req && typeof req.write === 'function') {
+    var originalWrite = req.write.bind(req);
+    req.write = function (chunk) {
+      if (chunk) {
+        if (typeof chunk.length === 'number') {
+          bytesSent += chunk.length;
+        } else if (typeof chunk.byteLength === 'number') {
+          bytesSent += chunk.byteLength;
+        }
+      }
+      return originalWrite.apply(req, arguments);
+    };
+  }
+
   try {
     client._sendRequest(req, body);
   } catch (ex) {
+    if (observer && !endEmitted) {
+      endEmitted = true;
+      safeEmit('error', {
+        durationMs: Date.now() - startedAt,
+        bytesSent: bytesSent,
+        bytesReceived: bytesReceived,
+        errorCode: (ex && (ex.code || ex.name)) || 'SEND_ERROR'
+      });
+    }
     deferred.reject(ex);
   }
   return deferred.promise;

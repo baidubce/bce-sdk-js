@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Baidu Inc. All Rights Reserved
+ *
+ * This source code is licensed under the MIT license.
+ * See LICENSE file in the project root for license information.
+ */
 var stream = require('stream');
 var util = require('util');
 var timers = require('timers');
