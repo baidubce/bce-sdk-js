@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 1.0.8-beta.8
+
+_published on 2026-06-11_
+
+- types: replace `const enum` declarations (`BucketPermission`, `ObjectPermission`, `BOSHeaders`) with regular `type` aliases (`BucketPermissionType`, `ObjectPermissionType`, `BOSHeadersType`) to fix compatibility issues in non-TypeScript consumers.
+- types: relax `BOSAPIError.code` from `OpenAPIErrorType` to `string`.
+- types: remove `'unknown'` from `HeadBucketHeaders['x-bce-versioning']` union.
+
 ## 1.0.8-beta.6
 
 _published on 2026-05-22_

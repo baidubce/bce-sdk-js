@@ -35,93 +35,92 @@ declare namespace BaiduBCE {
   type BucketVersionStateType = 'enabled' | 'notEnabled' | 'suspended';
 
   /** Bucket 级别细粒度权限（节选客户端用到的部分） */
-  const enum BucketPermission {
-    FULL_CONTROL = 'FULL_CONTROL',
-    READ = 'READ',
-    WRITE = 'WRITE',
-    LIST = 'LIST',
-    MODIFY = 'MODIFY',
-    ListBucket = 'ListBucket',
-    GetBucket = 'GetBucket',
-    GetBucketAcl = 'GetBucketAcl',
-    PutBucketAcl = 'PutBucketAcl',
-    PutBucketTagging = 'PutBucketTagging',
-    GetBucketTagging = 'GetBucketTagging',
-    PutBucketStorageClass = 'PutBucketStorageClass',
-    GetBucketStorageClass = 'GetBucketStorageClass',
-    PutBucketVersioning = 'PutBucketVersioning',
-    GetBucketVersioning = 'GetBucketVersioning',
-    GetObjectVersion = 'GetObjectVersion',
-    DeleteObjectVersion = 'DeleteObjectVersion',
-    ListObjectVersions = 'ListObjectVersions',
-    PutObjectVersionAcl = 'PutObjectVersionAcl',
-    GetObjectVersionAcl = 'GetObjectVersionAcl'
-  }
+  type BucketPermissionType =
+    | 'FULL_CONTROL'
+    | 'READ'
+    | 'WRITE'
+    | 'LIST'
+    | 'MODIFY'
+    | 'ListBucket'
+    | 'GetBucket'
+    | 'GetBucketAcl'
+    | 'PutBucketAcl'
+    | 'PutBucketTagging'
+    | 'GetBucketTagging'
+    | 'PutBucketStorageClass'
+    | 'GetBucketStorageClass'
+    | 'PutBucketVersioning'
+    | 'GetBucketVersioning'
+    | 'GetObjectVersion'
+    | 'DeleteObjectVersion'
+    | 'ListObjectVersions'
+    | 'PutObjectVersionAcl'
+    | 'GetObjectVersionAcl';
 
   /** Object 级别细粒度权限 */
-  const enum ObjectPermission {
-    FULL_CONTROL = 'FULL_CONTROL',
-    READ = 'READ',
-    WRITE = 'WRITE',
-    GetObject = 'GetObject',
-    PutObject = 'PutObject',
-    DeleteObject = 'DeleteObject',
-    RestoreObject = 'RestoreObject',
-    RenameObject = 'RenameObject',
-    ListParts = 'ListParts',
-    GetObjectAcl = 'GetObjectAcl',
-    PutObjectAcl = 'PutObjectAcl'
-  }
+  type ObjectPermissionType =
+    | 'FULL_CONTROL'
+    | 'READ'
+    | 'WRITE'
+    | 'GetObject'
+    | 'PutObject'
+    | 'DeleteObject'
+    | 'RestoreObject'
+    | 'RenameObject'
+    | 'ListParts'
+    | 'GetObjectAcl'
+    | 'PutObjectAcl';
 
   /** BOS OpenAPI 支持的请求头 */
-  const enum BOSHeaders {
-    CONTENT_TYPE = 'Content-Type',
-    CONTENT_LENGTH = 'Content-Length',
-    CONTENT_MD5 = 'Content-MD5',
-    CONTENT_ENCODING = 'Content-Encoding',
-    CONTENT_DISPOSITION = 'Content-Disposition',
-    ETAG = 'ETag',
-    CONNECTION = 'Connection',
-    HOST = 'Host',
-    USER_AGENT = 'User-Agent',
-    CACHE_CONTROL = 'Cache-Control',
-    EXPIRES = 'Expires',
-    ORIGIN = 'Origin',
-    ACCESS_CONTROL_REQUEST_METHOD = 'Access-Control-Request-Method',
-    ACCESS_CONTROL_REQUEST_HEADERS = 'Access-Control-Request-Headers',
-    AUTHORIZATION = 'Authorization',
-    X_BCE_DATE = 'x-bce-date',
-    X_BCE_ACL = 'x-bce-acl',
-    X_BCE_GRANT_READ = 'x-bce-grant-read',
-    X_BCE_GRANT_FULL_CONTROL = 'x-bce-grant-full-control',
-    X_BCE_REQUEST_ID = 'x-bce-request-id',
-    X_BCE_CONTENT_SHA256 = 'x-bce-content-sha256',
-    X_BCE_OBJECT_ACL = 'x-bce-object-acl',
-    X_BCE_OBJECT_GRANT_READ = 'x-bce-object-grant-read',
-    X_BCE_STORAGE_CLASS = 'x-bce-storage-class',
-    X_BCE_SERVER_SIDE_ENCRYPTION = 'x-bce-server-side-encryption',
-    X_BCE_RESTORE = 'x-bce-restore',
-    X_BCE_RESTORE_DAYS = 'x-bce-restore-days',
-    X_BCE_RESTORE_TIER = 'x-bce-restore-tier',
-    X_BCE_SYMLINK_TARGET = 'x-bce-symlink-target',
-    X_BCE_FORBID_OVERWRITE = 'x-bce-forbid-overwrite',
-    X_BCE_TRAFFIC_LIMIT = 'x-bce-traffic-limit',
-    X_BCE_FETCH_SOURCE = 'x-bce-fetch-source',
-    X_BCE_FETCH_MODE = 'x-bce-fetch-mode',
-    X_BCE_CALLBACK_ADDRESS = 'x-bce-callback-address',
-    X_BCE_FETCH_REFERER = 'x-bce-fetch-referer',
-    X_BCE_FETCH_USER_AGENT = 'x-bce-fetch-user-agent',
-    X_BCE_PROCESS = 'x-bce-process',
-    X_BCE_SOURCE = 'x-bce-source',
-    X_BCE_TAGGING = 'x-bce-tagging',
-    X_BCE_COPY_SOURCE = 'x-bce-copy-source',
-    X_BCE_COPY_SOURCE_IF_MODIFIED_SINCE = 'x-bce-copy-source-if-modified-since',
-    X_BCE_COPY_SOURCE_IF_MATCH = 'x-bce-copy-source-if-match',
-    SESSION_TOKEN = 'x-bce-security-token'
-  }
+  type BOSHeadersType =
+    | 'Content-Type'
+    | 'content-type'
+    | 'Content-Length'
+    | 'content-length'
+    | 'content-md5'
+    | 'content-encoding'
+    | 'content-disposition'
+    | 'etag'
+    | 'connection'
+    | 'host'
+    | 'user-agent'
+    | 'cache-control'
+    | 'expires'
+    | 'origin'
+    | 'access-control-request-method'
+    | 'access-control-request-headers'
+    | 'authorization'
+    | 'x-bce-date'
+    | 'x-bce-acl'
+    | 'x-bce-grant-read'
+    | 'x-bce-grant-full-control'
+    | 'x-bce-request-id'
+    | 'x-bce-content-sha256'
+    | 'x-bce-object-acl'
+    | 'x-bce-object-grant-read'
+    | 'x-bce-storage-class'
+    | 'x-bce-server-side-encryption'
+    | 'x-bce-restore'
+    | 'x-bce-restore-days'
+    | 'x-bce-restore-tier'
+    | 'x-bce-symlink-target'
+    | 'x-bce-forbid-overwrite'
+    | 'x-bce-traffic-limit'
+    | 'x-bce-fetch-source'
+    | 'x-bce-fetch-mode'
+    | 'x-bce-callback-address'
+    | 'x-bce-fetch-referer'
+    | 'x-bce-fetch-user-agent'
+    | 'x-bce-process'
+    | 'x-bce-source'
+    | 'x-bce-tagging'
+    | 'x-bce-copy-source'
+    | 'x-bce-copy-source-if-modified-since'
+    | 'x-bce-copy-source-if-match'
+    | 'x-bce-security-token';
 
   /** BOS 支持传入的请求头集合（部分） */
-  type BOSInternalHeaders = Partial<Record<`${BOSHeaders}`, any>>;
+  type BOSInternalHeaders = Partial<Record<`${BOSHeadersType}`, any>>;
 
   /*****************************************************************************************
    *                            BOS 响应、配置类型
@@ -138,7 +137,7 @@ declare namespace BaiduBCE {
   export interface BOSAPIError {
     'status_code': number;
     'message': string;
-    'code'?: OpenAPIErrorType;
+    'code'?: string;
     'request_id'?: string;
     'x-bce-date'?: string;
     'x-bce-debug-id'?: string;
@@ -365,7 +364,7 @@ declare namespace BaiduBCE {
       condition: {
         time: {dateGreaterThan: string};
       };
-      action: {name: BucketPermission};
+      action: {name: BucketPermissionType};
       storageClass: BOSStorageClassType;
     }>;
   }
@@ -469,7 +468,7 @@ declare namespace BaiduBCE {
   }
 
   interface HeadBucketHeaders extends OpenAPIHeaders {
-    'x-bce-versioning': BucketVersionStateType | 'unknown';
+    'x-bce-versioning': BucketVersionStateType;
     'x-bce-bucket-az-type': 'false' | 'true';
     'x-bce-bucket-createtime': string;
     'x-bce-bucket-dedicated': 'false' | 'true';
@@ -480,7 +479,7 @@ declare namespace BaiduBCE {
     'x-bce-lcclocation'?: string;
   }
 
-  interface BOSACLItem<T extends BucketPermission | ObjectPermission> {
+  interface BOSACLItem<T extends BucketPermissionType | ObjectPermissionType> {
     grantee: Array<{id: string}>;
     permission: T[];
     effect?: 'Allow' | 'Deny';
@@ -539,7 +538,7 @@ declare namespace BaiduBCE {
   /** GetBucketAcl 响应体 */
   interface GetBucketAclRes {
     owner: Owner;
-    accessControlList: BOSACLItem<BucketPermission>[];
+    accessControlList: BOSACLItem<BucketPermissionType>[];
   }
 
   // -------- Bucket 生命周期 --------
@@ -625,7 +624,7 @@ declare namespace BaiduBCE {
   // -------- Object ACL --------
   /** GetObjectAcl 响应体 */
   interface GetObjectAclRes {
-    accessControlList: Array<BOSACLItem<ObjectPermission>>;
+    accessControlList: Array<BOSACLItem<ObjectPermissionType>>;
   }
 
   // -------- Multipart Upload --------
@@ -885,7 +884,7 @@ declare namespace BaiduBCE {
      * - BOS系统不支持在同一请求中，同时设置“x-bce-acl”和上传ACL文件。
      * @doc https://cloud.baidu.com/doc/BOS/s/pkc4etf4p
      */
-    setBucketAcl(bucketName: string, acl: BOSACLItem<BucketPermission>[], options?: BosClientAPIOptions): BosResponse;
+    setBucketAcl(bucketName: string, acl: BOSACLItem<BucketPermissionType>[], options?: BosClientAPIOptions): BosResponse;
 
     /**
      * 获取某个Bucket的访问权限

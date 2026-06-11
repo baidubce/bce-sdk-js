@@ -58603,7 +58603,7 @@ exports.createContext = Script.createContext = function (context) {
 },{"indexof":168}],426:[function(require,module,exports){
 module.exports={
   "name": "@baiducloud/sdk",
-  "version": "1.0.8-beta.6",
+  "version": "1.0.8-beta.7",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "types": "./types/index.d.ts",
@@ -58640,7 +58640,8 @@ module.exports={
     "types:tsc": "tsc -p tsconfig.check.json",
     "publish:bos": "node scripts/publish_to_bos.js",
     "test": "jest",
-    "test:legacy": "./test/run-all.sh"
+    "test:legacy": "./test/run-all.sh",
+    "sync:mirror": "node scripts/sync-npmmirror.mjs"
   },
   "repository": {
     "type": "git",
@@ -58653,6 +58654,10 @@ module.exports={
     "lurunze <lurunze@hotmail.com>"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
     "@types/node": "^16.0.0",
@@ -62726,9 +62731,10 @@ BosClient.prototype._prepareObjectHeaders = function (options) {
     'ARCHIVE', /** 冷存储 */
     'COLD', /** 标准存储-多AZ */
     'MAZ_STANDARD', /** 低频存储-多AZ */
-    'MAZ_STANDARD_IA'];
+    'MAZ_STANDARD_IA', /** 冷存储-多AZ */
+    'MAZ_COLD'];
     if (!STORAGE_CLASS.includes(storageClass)) {
-      headers[H.X_BCE_STORAGE_CLASS] = STORAGE_CLASS[0];
+      console.warn('x-bce-storage-class header value is not valid: ', storageClass);
     }
   }
   return headers;

@@ -2403,11 +2403,13 @@ BosClient.prototype._prepareObjectHeaders = function (options) {
       /** 标准存储-多AZ */
       'MAZ_STANDARD',
       /** 低频存储-多AZ */
-      'MAZ_STANDARD_IA'
+      'MAZ_STANDARD_IA',
+      /** 冷存储-多AZ */
+      'MAZ_COLD'
     ];
 
     if (!STORAGE_CLASS.includes(storageClass)) {
-      headers[H.X_BCE_STORAGE_CLASS] = STORAGE_CLASS[0];
+      console.warn('x-bce-storage-class header value is not valid: ', storageClass);
     }
   }
 

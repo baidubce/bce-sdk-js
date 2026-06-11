@@ -1,6 +1,6 @@
 {
   "name": "@baiducloud/sdk",
-  "version": "1.0.8-beta.6",
+  "version": "1.0.8-beta.7",
   "description": "Baidu Cloud Engine JavaScript SDK",
   "main": "./index.js",
   "types": "./types/index.d.ts",
@@ -37,7 +37,8 @@
     "types:tsc": "tsc -p tsconfig.check.json",
     "publish:bos": "node scripts/publish_to_bos.js",
     "test": "jest",
-    "test:legacy": "./test/run-all.sh"
+    "test:legacy": "./test/run-all.sh",
+    "sync:mirror": "node scripts/sync-npmmirror.mjs"
   },
   "repository": {
     "type": "git",
